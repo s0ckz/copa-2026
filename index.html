@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Copa 2026 — Meu Álbum de Figurinhas</title>
+<style>
+:root {
+  --bg: #0f1623;
+  --panel: #18223a;
+  --panel-2: #1f2c4a;
+  --line: #283659;
+  --text: #e7ecf5;
+  --muted: #93a3c7;
+  --accent: #4cb3ff;
+  --owned: #2bb673;
+  --owned-2: #1f8b56;
+  --dup: #e1a92b;
+  --dup-2: #b58418;
+  --missing: #2a364f;
+  --missing-edge: #3d4d70;
+  --warn: #e35a5a;
+  --ok: #4ad28a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: linear-gradient(180deg, #0a1020, var(--bg));
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  padding: 12px 16px;
+  background: rgba(15,22,35,.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.title-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.title-row h1 { margin: 0; font-size: 17px; font-weight: 700; }
+.user-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 10px; font-size: 12px;
+}
+.user-pill input {
+  background: transparent; border: 0; color: var(--text);
+  font: inherit; width: 130px; text-align: center; outline: none;
+}
+.user-pill .label { color: var(--muted); }
+.sync-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); transition: background .2s;
+  display: inline-block;
+}
+.sync-dot.local { background: #888; }
+.sync-dot.synced { background: var(--ok); }
+.sync-dot.syncing { background: #ffd35a; }
+.sync-dot.error { background: var(--warn); }
+.progress-wrap {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; min-width: 220px;
+}
+.progress-track {
+  flex: 1; height: 10px; background: #0b1224; border: 1px solid var(--line);
+  border-radius: 999px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0; background: linear-gradient(90deg, var(--owned), var(--accent));
+  transition: width .25s ease;
+}
+.progress-text { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-btn, .actions button {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+  padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.filter-btn:hover, .actions button:hover { background: #25345a; }
+.filter-btn.active { background: var(--accent); color: #00131e; border-color: var(--accent); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.actions .warn { border-color: #50313a; color: #ffb4b4; }
+.actions .warn:hover { background: #3a1d28; }
+#search {
+  flex: 1; min-width: 160px;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 12px; font-size: 13px;
+}
+#search:focus { outline: none; border-color: var(--accent); }
+.legend { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.legend code {
+  background: rgba(255,255,255,.05); padding: 1px 5px; border-radius: 4px;
+  border: 1px solid var(--line);
+}
+main {
+  max-width: 1240px; margin: 0 auto; padding: 16px;
+  display: grid; grid-template-columns: 1fr; gap: 14px;
+}
+@media (min-width: 900px) { main { grid-template-columns: 1fr 1fr; } }
+.team {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px;
+}
+.team-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px;
+}
+.team-header h2 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0; font-size: 15px; font-weight: 600;
+}
+.team-header .flag { font-size: 20px; }
+.team-header .code { color: var(--accent); font-weight: 700; }
+.team-header .name { color: var(--muted); font-weight: 400; font-size: 13px; }
+.team-stats { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: #0b1326; border: 1px solid var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.owned-badge { color: #b9e6cd; }
+.dup-badge-inline { color: #f1d178; }
+.mini-bar { width: 70px; height: 6px; background: #0b1224; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.mini-fill { height: 100%; background: linear-gradient(90deg, var(--owned-2), var(--owned)); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+.tile {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  border: 1px solid var(--missing-edge);
+  background: var(--missing);
+  color: #b9c4dd;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700; font-size: 16px;
+  transition: transform .08s ease, background .15s ease;
+}
+.tile:hover { transform: translateY(-1px); }
+.tile.owned {
+  background: linear-gradient(180deg, var(--owned), var(--owned-2));
+  color: #062114; border-color: #1a734b;
+}
+.tile.owned.dup {
+  background: linear-gradient(180deg, var(--dup), var(--dup-2));
+  color: #2a1a00; border-color: #8c6512;
+}
+.tile .num { pointer-events: none; }
+.tile .dup-badge {
+  position: absolute; top: 2px; right: 4px;
+  font-size: 10px; padding: 1px 5px; border-radius: 999px;
+  background: rgba(0,0,0,.35); color: #fff7d9;
+}
+.tile button.inc, .tile button.dec {
+  position: absolute; bottom: 2px;
+  width: 18px; height: 18px;
+  border-radius: 6px; border: 1px solid rgba(0,0,0,.25);
+  background: rgba(255,255,255,.18);
+  color: inherit;
+  font-size: 12px; font-weight: 800; line-height: 1;
+  cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .12s ease;
+}
+.tile:hover button.inc, .tile:hover button.dec,
+.tile:focus-within button.inc, .tile:focus-within button.dec { opacity: 1; }
+.tile.owned.dup button.inc, .tile.owned.dup button.dec { opacity: 1; }
+.tile button.dec { left: 2px; }
+.tile button.inc { right: 2px; }
+.tile button.inc:hover, .tile button.dec:hover { background: rgba(255,255,255,.32); }
+.foot {
+  text-align: center; padding: 18px; color: var(--muted); font-size: 12px;
+}
+.foot a { color: var(--accent); }
+@media (max-width: 480px) {
+  .title-row h1 { font-size: 15px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+  .tile { font-size: 14px; }
+  .team-header .name { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="title-row">
+    <h1>🏆 Copa 2026 — Meu Álbum</h1>
+    <span class="user-pill" title="Seu código de álbum. Compartilhe a URL para acessar de outros aparelhos.">
+      <span class="sync-dot local" id="sync-dot"></span>
+      <span class="label">código</span>
+      <input id="user-code" autocomplete="off" spellcheck="false" />
+      <button id="copy-link" title="Copiar link" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔗</button>
+    </span>
+    <div class="progress-wrap">
+      <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
+      <span id="total-progress" class="progress-text">0 / 0 (0%)</span>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Todas</button>
+      <button class="filter-btn" data-filter="owned">Tenho</button>
+      <button class="filter-btn" data-filter="missing">Faltam</button>
+      <button class="filter-btn" data-filter="dups">Repetidas</button>
+    </div>
+    <input id="search" type="search" placeholder="Buscar seleção (ARG, brasil, ...)" />
+    <div class="actions">
+      <button id="export-json" title="Baixar JSON">⬇ JSON</button>
+      <button id="export-text" title="Lista no formato Figuritas">⬇ Lista</button>
+      <button id="import-btn" title="Importar JSON">⬆ Importar</button>
+      <input id="import-file" type="file" accept="application/json" hidden />
+      <button id="reset" class="warn" title="Carregar lista inicial (estado semente)">↺ Lista inicial</button>
+      <button id="clear-all" class="warn" title="Marcar todas como faltantes">✕ Esvaziar</button>
+    </div>
+  </div>
+  <p class="legend">
+    Clique numa figurinha: alterna <b>tenho / falta</b>. <code>+</code> adiciona repetida, <code>−</code> remove.
+    Clique direito: adiciona repetida.
+  </p>
+</header>
+
+<main id="album"></main>
+
+<footer class="foot">
+  <span id="storage-info">Armazenamento local (este navegador).</span>
+  · <a href="#" id="show-help">como configurar a nuvem?</a>
+  <div id="help" style="display:none; max-width:640px; margin:14px auto; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px;">
+    <p>Para sincronizar entre aparelhos e compartilhar com outras pessoas (cada um com seu código), use Supabase grátis:</p>
+    <ol>
+      <li>Crie um projeto em <a href="https://supabase.com" target="_blank" rel="noreferrer">supabase.com</a> (grátis).</li>
+      <li>No <b>SQL Editor</b>, rode o conteúdo de <code>schema.sql</code> (que vem junto deste arquivo).</li>
+      <li>Em <b>Settings → API</b>, copie a <b>Project URL</b> e a <b>anon public key</b>.</li>
+      <li>Edite este arquivo: preencha as constantes <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no topo do <code>&lt;script&gt;</code>.</li>
+      <li>Hospede o HTML em <a href="https://pages.cloudflare.com" target="_blank" rel="noreferrer">Cloudflare Pages</a> ou <a href="https://www.netlify.com/products/dev/" target="_blank" rel="noreferrer">Netlify</a> (arraste e solte). Pronto.</li>
+    </ol>
+    <p>Cada visitante usa um <b>código</b> próprio (URL <code>?u=meu-codigo</code>). Quem tem o código pode ver e editar o álbum daquele código.</p>
+  </div>
+</footer>
+
+<script type="module">
+// ========================== CONFIG ==========================
+// Para usar nuvem (recomendado para hospedar e compartilhar entre aparelhos),
+// preencha as duas linhas abaixo com os dados do seu projeto Supabase.
+// Deixe vazio para rodar 100% local (localStorage do navegador).
+const SUPABASE_URL = 'https://yjkaxccqgqujkooutntm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlqa2F4Y2NxZ3F1amtvb3V0bnRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMDIxNjgsImV4cCI6MjA5Mzc3ODE2OH0.UUbfWeWeIKGT7WZ2AaRq2BlhI_INv5Ho2ZTYUH3WUec';
+
+// Código padrão quando a URL não traz `?u=...`. Compartilhe o link com este
+// código pra acessar seu álbum de qualquer aparelho.
+const DEFAULT_CODE = 's0ckz-2026';
+
+// Quando alguém abrir o app com este código pela primeira vez (e o álbum
+// na nuvem estiver vazio), carrega a lista inicial abaixo.
+const STARTER_SEED_FOR = 's0ckz-2026';
+
+// ========================== DADOS DO ÁLBUM ==========================
+const RANGE = (n) => Array.from({ length: n }, (_, i) => i + 1);
+
+const SECTIONS = [
+  { code: 'FWC-T', name: 'FWC Troféu / Abertura', flag: '🏆', size: 14, allowZero: true },
+  { code: 'FWC-W', name: 'FWC Confederações',     flag: '🌎', size: 8 },
+  { code: 'FWC-L', name: 'FWC Lendas',            flag: '📜', size: 20 },
+  { code: 'MEX', name: 'México',              flag: '🇲🇽', size: 20 },
+  { code: 'RSA', name: 'África do Sul',       flag: '🇿🇦', size: 20 },
+  { code: 'KOR', name: 'Coreia do Sul',       flag: '🇰🇷', size: 20 },
+  { code: 'CZE', name: 'República Tcheca',    flag: '🇨🇿', size: 20 },
+  { code: 'CAN', name: 'Canadá',              flag: '🇨🇦', size: 20 },
+  { code: 'BIH', name: 'Bósnia e Herzegovina',flag: '🇧🇦', size: 20 },
+  { code: 'QAT', name: 'Catar',               flag: '🇶🇦', size: 20 },
+  { code: 'SUI', name: 'Suíça',               flag: '🇨🇭', size: 20 },
+  { code: 'BRA', name: 'Brasil',              flag: '🇧🇷', size: 20 },
+  { code: 'MAR', name: 'Marrocos',            flag: '🇲🇦', size: 20 },
+  { code: 'HAI', name: 'Haiti',               flag: '🇭🇹', size: 20 },
+  { code: 'SCO', name: 'Escócia',             flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', size: 20 },
+  { code: 'USA', name: 'Estados Unidos',      flag: '🇺🇸', size: 20 },
+  { code: 'PAR', name: 'Paraguai',            flag: '🇵🇾', size: 20 },
+  { code: 'AUS', name: 'Austrália',           flag: '🇦🇺', size: 20 },
+  { code: 'TUR', name: 'Turquia',             flag: '🇹🇷', size: 20 },
+  { code: 'GER', name: 'Alemanha',            flag: '🇩🇪', size: 20 },
+  { code: 'CUW', name: 'Curaçao',             flag: '🇨🇼', size: 20 },
+  { code: 'CIV', name: 'Costa do Marfim',     flag: '🇨🇮', size: 20 },
+  { code: 'ECU', name: 'Equador',             flag: '🇪🇨', size: 20 },
+  { code: 'NED', name: 'Países Baixos',       flag: '🇳🇱', size: 20 },
+  { code: 'JPN', name: 'Japão',               flag: '🇯🇵', size: 20 },
+  { code: 'SWE', name: 'Suécia',              flag: '🇸🇪', size: 20 },
+  { code: 'TUN', name: 'Tunísia',             flag: '🇹🇳', size: 20 },
+  { code: 'BEL', name: 'Bélgica',             flag: '🇧🇪', size: 20 },
+  { code: 'EGY', name: 'Egito',               flag: '🇪🇬', size: 20 },
+  { code: 'IRN', name: 'Irã',                 flag: '🇮🇷', size: 20 },
+  { code: 'NZL', name: 'Nova Zelândia',       flag: '🇳🇿', size: 20 },
+  { code: 'ESP', name: 'Espanha',             flag: '🇪🇸', size: 20 },
+  { code: 'CPV', name: 'Cabo Verde',          flag: '🇨🇻', size: 20 },
+  { code: 'KSA', name: 'Arábia Saudita',      flag: '🇸🇦', size: 20 },
+  { code: 'URU', name: 'Uruguai',             flag: '🇺🇾', size: 20 },
+  { code: 'FRA', name: 'França',              flag: '🇫🇷', size: 20 },
+  { code: 'SEN', name: 'Senegal',             flag: '🇸🇳', size: 20 },
+  { code: 'IRQ', name: 'Iraque',              flag: '🇮🇶', size: 20 },
+  { code: 'NOR', name: 'Noruega',             flag: '🇳🇴', size: 20 },
+  { code: 'ARG', name: 'Argentina',           flag: '🇦🇷', size: 20 },
+  { code: 'ALG', name: 'Argélia',             flag: '🇩🇿', size: 20 },
+  { code: 'AUT', name: 'Áustria',             flag: '🇦🇹', size: 20 },
+  { code: 'JOR', name: 'Jordânia',            flag: '🇯🇴', size: 20 },
+  { code: 'POR', name: 'Portugal',            flag: '🇵🇹', size: 20 },
+  { code: 'COD', name: 'RD do Congo',         flag: '🇨🇩', size: 20 },
+  { code: 'UZB', name: 'Uzbequistão',         flag: '🇺🇿', size: 20 },
+  { code: 'COL', name: 'Colômbia',            flag: '🇨🇴', size: 20 },
+  { code: 'ENG', name: 'Inglaterra',          flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', size: 20 },
+  { code: 'CRO', name: 'Croácia',             flag: '🇭🇷', size: 20 },
+  { code: 'GHA', name: 'Gana',                flag: '🇬🇭', size: 20 },
+  { code: 'PAN', name: 'Panamá',              flag: '🇵🇦', size: 20 },
+];
+
+// Faltantes do usuário (lista inicial seed).
+const SEED_MISSING = {
+  'FWC-T': [2, 4],
+  'FWC-W': [5, 6, 8],
+  'FWC-L': [18, 19],
+  MEX: [3, 4, 7, 8, 11, 12],
+  RSA: RANGE(20), KOR: RANGE(20), CZE: RANGE(20), CAN: RANGE(20),
+  BIH: RANGE(20), QAT: RANGE(20), SUI: RANGE(20),
+  BRA: [1, 2, 4, 5, 6, 8, 9, 10, 13, 14, 15, 19],
+  MAR: RANGE(20), HAI: RANGE(20), SCO: RANGE(20),
+  USA: RANGE(20), PAR: RANGE(20),
+  AUS: [1, 4, 6, 7, 10, 12, 15, 19],
+  TUR: RANGE(20), GER: RANGE(20),
+  CUW: [1, 2, 9, 14, 17, 18],
+  CIV: RANGE(20), ECU: RANGE(20),
+  NED: [1, 3, 7, 17, 18],
+  JPN: [3, 5, 6, 7, 9, 10, 11, 15, 16, 19, 20],
+  SWE: RANGE(20), TUN: RANGE(20),
+  BEL: [1, 2, 5, 10, 12, 16, 17, 19, 20],
+  EGY: RANGE(20), IRN: RANGE(20),
+  NZL: [1, 3, 4, 5, 7, 8, 9, 11, 12, 14, 16, 17, 18, 20],
+  ESP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20],
+  CPV: [3, 4, 8],
+  KSA: RANGE(20), URU: RANGE(20),
+  FRA: [1, 9, 13, 14],
+  SEN: RANGE(20),
+  IRQ: [1, 2, 4, 18, 19],
+  NOR: RANGE(20), ARG: RANGE(20), ALG: RANGE(20),
+  AUT: RANGE(20), JOR: RANGE(20),
+  POR: [1, 2, 3, 5],
+  COD: RANGE(20),
+  UZB: [1, 2, 4, 5, 7, 8, 9, 11, 12, 16, 17],
+  COL: RANGE(20), ENG: RANGE(20), CRO: RANGE(20), GHA: RANGE(20),
+  PAN: [1, 3, 5, 7, 9, 10, 11, 13, 14, 15, 16, 19, 20],
+};
+
+// Repetidas: cada número listado = 1 cópia extra (além da que você tem).
+const SEED_DUPS = {
+  'FWC-T': [0],
+  'FWC-L': [12, 14, 15, 16],
+  MEX: [15, 16, 17, 19, 20],
+  BRA: [11, 20],
+  AUS: [2, 18],
+  CUW: [7, 10, 15, 19],
+  NED: [2, 4, 5, 6, 8, 9, 12, 14],
+  JPN: [2, 8, 12, 17],
+  BEL: [3, 7],
+  NZL: [2],
+  CPV: [2, 5, 6, 9],
+  FRA: [2, 3, 6, 10, 18],
+  IRQ: [8, 9],
+  POR: [7, 8, 11, 13, 16, 20],
+  UZB: [13, 19, 20],
+};
+
+// ========================== ESTADO ==========================
+const params = new URLSearchParams(location.search);
+let userCode = (params.get('u') || DEFAULT_CODE).trim();
+
+const isCloud = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+let supabase = null;
+let realtimeChannel = null;
+
+let state = {};
+let filter = 'all';
+let searchText = '';
+
+const localKey = (code) => `copa-2026-album:${code}`;
+
+function blankState() {
+  const s = {};
+  for (const sec of SECTIONS) {
+    s[sec.code] = {};
+    const start = sec.allowZero ? 0 : 1;
+    for (let n = start; n <= sec.size; n++) {
+      s[sec.code][n] = { owned: false, dups: 0 };
+    }
+  }
+  return s;
+}
+function seededState() {
+  const s = blankState();
+  // start: tudo "tenho", depois aplica faltantes
+  for (const sec of SECTIONS) {
+    const start = sec.allowZero ? 0 : 1;
+    for (let n = start; n <= sec.size; n++) s[sec.code][n].owned = true;
+  }
+  for (const [code, list] of Object.entries(SEED_MISSING)) {
+    for (const n of list) {
+      if (s[code]?.[n]) { s[code][n].owned = false; s[code][n].dups = 0; }
+    }
+  }
+  for (const [code, list] of Object.entries(SEED_DUPS)) {
+    for (const n of list) {
+      if (s[code]?.[n]) { s[code][n].owned = true; s[code][n].dups = 1; }
+    }
+  }
+  return s;
+}
+function ensureCells(s) {
+  for (const sec of SECTIONS) {
+    s[sec.code] = s[sec.code] || {};
+    const start = sec.allowZero ? 0 : 1;
+    for (let n = start; n <= sec.size; n++) {
+      if (!s[sec.code][n]) s[sec.code][n] = { owned: false, dups: 0 };
+    }
+  }
+  return s;
+}
+function loadLocal(code) {
+  try {
+    const raw = localStorage.getItem(localKey(code));
+    if (!raw) return null;
+    return ensureCells(JSON.parse(raw));
+  } catch { return null; }
+}
+function saveLocal(code, st) {
+  try { localStorage.setItem(localKey(code), JSON.stringify(st)); } catch {}
+}
+
+// ========================== NUVEM (SUPABASE) ==========================
+async function initCloud() {
+  const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+  supabase = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    realtime: { params: { eventsPerSecond: 5 } },
+  });
+}
+async function fetchCloud(code) {
+  const { data, error } = await supabase
+    .from('sticker_cells')
+    .select('section_code, number, have, dups')
+    .eq('user_code', code);
+  if (error) throw error;
+  return data;
+}
+async function pushAllToCloud(code, st) {
+  const rows = [];
+  for (const sec of SECTIONS) {
+    for (const numStr of Object.keys(st[sec.code] || {})) {
+      const n = parseInt(numStr, 10);
+      const c = st[sec.code][n];
+      rows.push({
+        user_code: code, section_code: sec.code, number: n,
+        have: !!c.owned, dups: c.dups | 0,
+      });
+    }
+  }
+  const chunkSize = 500;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const slice = rows.slice(i, i + chunkSize);
+    const { error } = await supabase.from('sticker_cells').upsert(slice, {
+      onConflict: 'user_code,section_code,number',
+    });
+    if (error) throw error;
+  }
+}
+async function upsertCell(code, sectionCode, n, cell) {
+  if (!supabase) return;
+  setSync('syncing');
+  const { error } = await supabase.from('sticker_cells').upsert({
+    user_code: code, section_code: sectionCode, number: n,
+    have: !!cell.owned, dups: cell.dups | 0,
+  }, { onConflict: 'user_code,section_code,number' });
+  if (error) { console.error(error); setSync('error'); }
+  else setSync('synced');
+}
+function subscribeRealtime(code) {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+  realtimeChannel = supabase
+    .channel(`cells-${code}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'sticker_cells',
+      filter: `user_code=eq.${code}`,
+    }, (payload) => {
+      const r = payload.new || payload.old;
+      if (!r) return;
+      state[r.section_code] = state[r.section_code] || {};
+      if (payload.eventType === 'DELETE') {
+        if (state[r.section_code][r.number]) {
+          state[r.section_code][r.number] = { owned: false, dups: 0 };
+        }
+      } else {
+        state[r.section_code][r.number] = {
+          owned: !!r.have, dups: r.dups | 0,
+        };
+      }
+      render();
+    })
+    .subscribe();
+}
+
+// ========================== CICLO DE VIDA ==========================
+function setSync(kind) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + kind;
+  const info = document.getElementById('storage-info');
+  if (!isCloud) info.textContent = 'Armazenamento local (este navegador).';
+  else if (kind === 'syncing') info.textContent = 'Sincronizando…';
+  else if (kind === 'synced')  info.textContent = `Sincronizado · código ${userCode}`;
+  else if (kind === 'error')   info.textContent = 'Erro de sincronização (veja console).';
+  else info.textContent = `Local · código ${userCode}`;
+}
+
+async function loadForCode(code) {
+  userCode = code;
+  document.getElementById('user-code').value = code;
+  // atualiza URL sem recarregar
+  const u = new URL(location.href);
+  u.searchParams.set('u', code);
+  history.replaceState(null, '', u);
+
+  if (isCloud) {
+    setSync('syncing');
+    try {
+      const rows = await fetchCloud(code);
+      if (rows.length === 0) {
+        if (code === STARTER_SEED_FOR) {
+          state = seededState();
+          await pushAllToCloud(code, state);
+        } else {
+          state = blankState();
+        }
+      } else {
+        state = blankState();
+        for (const r of rows) {
+          state[r.section_code] = state[r.section_code] || {};
+          state[r.section_code][r.number] = { owned: !!r.have, dups: r.dups | 0 };
+        }
+        ensureCells(state);
+      }
+      subscribeRealtime(code);
+      setSync('synced');
+    } catch (e) {
+      console.error(e);
+      setSync('error');
+      // fallback
+      state = loadLocal(code) || (code === STARTER_SEED_FOR ? seededState() : blankState());
+    }
+  } else {
+    state = loadLocal(code) || (code === STARTER_SEED_FOR ? seededState() : blankState());
+    setSync('local');
+  }
+  render();
+}
+
+// ========================== UI ==========================
+const $ = (sel) => document.querySelector(sel);
+const fmtNum = (n) => (n === 0 ? '00' : String(n));
+
+function tileClass(c) {
+  if (!c.owned) return 'tile missing';
+  if ((c.dups || 0) > 0) return 'tile owned dup';
+  return 'tile owned';
+}
+function passesFilter(c) {
+  if (filter === 'all') return true;
+  if (filter === 'owned') return c.owned && (c.dups || 0) === 0;
+  if (filter === 'missing') return !c.owned;
+  if (filter === 'dups') return (c.dups || 0) > 0;
+  return true;
+}
+function matchesSearch(sec) {
+  if (!searchText) return true;
+  const q = searchText.toLowerCase();
+  return sec.code.toLowerCase().includes(q) || sec.name.toLowerCase().includes(q);
+}
+function sectionStats(sec) {
+  const start = sec.allowZero ? 0 : 1;
+  const slots = sec.size - start + 1;
+  let owned = 0, dups = 0, missing = 0;
+  for (let n = start; n <= sec.size; n++) {
+    const c = state[sec.code][n];
+    if (c.owned) owned++; else missing++;
+    dups += c.dups || 0;
+  }
+  return { slots, owned, missing, dups };
+}
+
+function render() {
+  const main = $('#album');
+  const frag = document.createDocumentFragment();
+  let totOwned = 0, totSlots = 0, totDups = 0, totMiss = 0;
+  for (const sec of SECTIONS) {
+    const st = sectionStats(sec);
+    totOwned += st.owned; totSlots += st.slots; totDups += st.dups; totMiss += st.missing;
+    if (!matchesSearch(sec)) continue;
+    const start = sec.allowZero ? 0 : 1;
+    const tiles = [];
+    for (let n = start; n <= sec.size; n++) {
+      const c = state[sec.code][n];
+      if (!passesFilter(c)) continue;
+      const cls = tileClass(c);
+      const dupBadge = (c.dups || 0) > 0 ? `<span class="dup-badge">×${c.dups + 1}</span>` : '';
+      tiles.push(`
+        <div class="${cls}" data-code="${sec.code}" data-num="${n}" title="${sec.code} #${fmtNum(n)} — clique alterna; +/- ajusta repetidas">
+          <button class="dec" data-act="dec" tabindex="-1">−</button>
+          <span class="num">${fmtNum(n)}</span>
+          <button class="inc" data-act="inc" tabindex="-1">+</button>
+          ${dupBadge}
+        </div>`);
+    }
+    if (tiles.length === 0) continue;
+    const pct = st.slots ? Math.round((st.owned / st.slots) * 100) : 0;
+    const sx = document.createElement('section');
+    sx.className = 'team';
+    sx.innerHTML = `
+      <header class="team-header">
+        <h2><span class="flag">${sec.flag}</span> <span class="code">${sec.code}</span> <span class="name">${sec.name}</span></h2>
+        <div class="team-stats">
+          <span class="badge owned-badge">${st.owned}/${st.slots}</span>
+          ${st.dups ? `<span class="badge dup-badge-inline">+${st.dups} repe</span>` : ''}
+          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+        </div>
+      </header>
+      <div class="grid">${tiles.join('')}</div>`;
+    frag.appendChild(sx);
+  }
+  main.replaceChildren(frag);
+  const pct = totSlots ? ((totOwned / totSlots) * 100) : 0;
+  $('#total-progress').textContent =
+    `${totOwned} / ${totSlots} (${pct.toFixed(1)}%) · ${totMiss} faltam · ${totDups} repetidas`;
+  $('#progress-bar').style.width = `${pct.toFixed(1)}%`;
+}
+
+function adjust(code, n, action) {
+  const cell = state[code][n];
+  if (!cell) return;
+  if (action === 'inc') {
+    cell.owned = true; cell.dups = (cell.dups || 0) + 1;
+  } else if (action === 'dec') {
+    if ((cell.dups || 0) > 0) cell.dups -= 1;
+    else if (cell.owned) cell.owned = false;
+  } else if (action === 'toggle') {
+    if (!cell.owned) cell.owned = true;
+    else if ((cell.dups || 0) > 0) cell.dups = 0;
+    else cell.owned = false;
+  }
+  saveLocal(userCode, state);
+  if (isCloud) upsertCell(userCode, code, n, cell);
+  render();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (btn) {
+    const tile = btn.closest('.tile');
+    e.stopPropagation();
+    adjust(tile.dataset.code, parseInt(tile.dataset.num, 10), btn.dataset.act);
+    return;
+  }
+  const tile = e.target.closest('.tile');
+  if (tile) adjust(tile.dataset.code, parseInt(tile.dataset.num, 10), 'toggle');
+});
+document.addEventListener('contextmenu', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  e.preventDefault();
+  adjust(tile.dataset.code, parseInt(tile.dataset.num, 10), 'inc');
+});
+
+document.querySelectorAll('.filter-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    filter = btn.dataset.filter;
+    render();
+  });
+});
+$('#search').addEventListener('input', (e) => { searchText = e.target.value; render(); });
+
+function dl(name, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+$('#export-json').addEventListener('click', () => {
+  dl(`copa-2026-${userCode}-${new Date().toISOString().slice(0, 10)}.json`,
+     JSON.stringify({ user_code: userCode, state }, null, 2),
+     'application/json');
+});
+$('#export-text').addEventListener('click', () => {
+  const lines = ['Figurinhas App - Lista', 'Eua Méx Can 26', '', 'Faltantes'];
+  for (const sec of SECTIONS) {
+    const start = sec.allowZero ? 0 : 1;
+    const miss = [];
+    for (let n = start; n <= sec.size; n++) if (!state[sec.code][n].owned) miss.push(fmtNum(n));
+    if (miss.length) lines.push(`${sec.code} ${sec.flag}: ${miss.join(', ')}`);
+  }
+  lines.push('', 'Repetidas');
+  for (const sec of SECTIONS) {
+    const start = sec.allowZero ? 0 : 1;
+    const dup = [];
+    for (let n = start; n <= sec.size; n++) {
+      const c = state[sec.code][n];
+      if ((c.dups || 0) > 0) dup.push(c.dups > 1 ? `${fmtNum(n)}×${c.dups}` : fmtNum(n));
+    }
+    if (dup.length) lines.push(`${sec.code} ${sec.flag}: ${dup.join(', ')}`);
+  }
+  dl(`copa-2026-${userCode}-${new Date().toISOString().slice(0, 10)}.txt`,
+     lines.join('\n'), 'text/plain;charset=utf-8');
+});
+$('#import-btn').addEventListener('click', () => $('#import-file').click());
+$('#import-file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const obj = JSON.parse(await f.text());
+    state = ensureCells(obj.state || obj);
+    saveLocal(userCode, state);
+    if (isCloud) await pushAllToCloud(userCode, state);
+    render();
+  } catch (err) { alert('Arquivo inválido: ' + err.message); }
+  e.target.value = '';
+});
+$('#reset').addEventListener('click', async () => {
+  if (!confirm('Carregar a lista inicial (semente)? Sobrescreve o álbum atual.')) return;
+  state = seededState();
+  saveLocal(userCode, state);
+  if (isCloud) await pushAllToCloud(userCode, state);
+  render();
+});
+$('#clear-all').addEventListener('click', async () => {
+  if (!confirm('Marcar TODAS como faltantes? Apaga tudo o que você tem neste código.')) return;
+  state = blankState();
+  saveLocal(userCode, state);
+  if (isCloud) await pushAllToCloud(userCode, state);
+  render();
+});
+$('#user-code').addEventListener('change', async (e) => {
+  const code = (e.target.value || '').trim();
+  if (!code) { e.target.value = userCode; return; }
+  await loadForCode(code);
+});
+$('#user-code').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') e.target.blur();
+});
+$('#copy-link').addEventListener('click', async () => {
+  const u = new URL(location.href);
+  u.searchParams.set('u', userCode);
+  await navigator.clipboard.writeText(u.toString());
+  const btn = $('#copy-link');
+  const old = btn.textContent; btn.textContent = '✓';
+  setTimeout(() => (btn.textContent = old), 1200);
+});
+$('#show-help').addEventListener('click', (e) => {
+  e.preventDefault();
+  const h = $('#help'); h.style.display = h.style.display === 'none' ? 'block' : 'none';
+});
+
+// ========================== START ==========================
+(async function start() {
+  if (isCloud) {
+    try { await initCloud(); }
+    catch (e) { console.error('falhou initCloud', e); setSync('error'); }
+  }
+  await loadForCode(userCode);
+})();
+</script>
+</body>
+</html>
