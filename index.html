@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Copa 2026 ⚽ Meu Álbum</title>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=2" />
 </head>
 <body>
 
@@ -18,7 +18,10 @@
       <button id="copy-link" title="Copiar link" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔗</button>
       <button id="lock-btn" title="Bloquear/desbloquear álbum" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔓</button>
     </span>
-    <button id="header-toggle" class="toggle-btn" aria-label="Mostrar filtros e ações" aria-expanded="false">▼</button>
+    <button id="header-toggle" class="toggle-btn" aria-label="Mostrar filtros e ações" aria-expanded="false">
+      <span class="toggle-label">Filtros</span>
+      <span class="toggle-chev" aria-hidden="true">▾</span>
+    </button>
     <div class="progress-wrap">
       <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
       <span id="total-progress" class="progress-text">0 / 0 (0%)</span>
@@ -1118,7 +1121,7 @@ $('#lock-btn').addEventListener('click', async () => {
   toggle.addEventListener('click', () => {
     const open = topbar.classList.toggle('open');
     toggle.setAttribute('aria-expanded', String(open));
-    toggle.textContent = open ? '▲' : '▼';
+    toggle.querySelector('.toggle-label').textContent = open ? 'Fechar' : 'Filtros';
   });
   // Shrink topbar (hide progress text) when scrolled past a threshold.
   let raf = null;

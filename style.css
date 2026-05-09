@@ -438,22 +438,39 @@ main {
 }
 .theme-toggle:hover { background: rgba(247,201,72,.2); text-decoration: none; }
 
-/* Header drawer toggle button — only relevant on mobile */
+/* Header drawer toggle pill — only shown on mobile */
 .toggle-btn {
   display: none;
-  background: rgba(0,0,0,.45);
-  border: 1px solid rgba(247,201,72,.4);
+  background: rgba(247,201,72,.14);
+  border: 1px solid rgba(247,201,72,.45);
   color: var(--gold);
-  width: 34px; height: 34px;
-  border-radius: 8px;
+  height: 32px; padding: 0 14px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 12px; font-weight: 700;
-  align-items: center; justify-content: center;
-  transition: background .15s, transform .25s ease;
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  align-items: center; gap: 6px;
+  transition: background .15s, color .15s, border-color .15s;
   flex-shrink: 0;
+  margin-left: auto;
+  -webkit-tap-highlight-color: rgba(247,201,72,.3);
+  user-select: none;
 }
-.toggle-btn:hover { background: rgba(247,201,72,.18); }
-.topbar.open .toggle-btn { background: rgba(247,201,72,.22); border-color: var(--gold); }
+.toggle-btn .toggle-chev {
+  font-size: 10px; line-height: 1;
+  transition: transform .25s ease;
+  display: inline-block;
+}
+.toggle-btn:hover { background: rgba(247,201,72,.28); }
+.toggle-btn:active { transform: translateY(1px); }
+.topbar.open .toggle-btn {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #1a1102;
+  border-color: var(--gold-2);
+  box-shadow: 0 2px 6px rgba(247,201,72,.3);
+}
+.topbar.open .toggle-btn .toggle-chev { transform: rotate(180deg); }
 
 /* On desktop, the drawer is just a transparent wrapper — flow is normal. */
 .header-drawer { display: contents; }
