@@ -200,6 +200,76 @@ main {
   text-align: center; padding: 18px; color: var(--muted); font-size: 12px;
 }
 .foot a { color: var(--accent); }
+
+/* ================ Modal ================ */
+dialog#modal {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--panel); color: var(--text);
+  padding: 0; max-width: 440px; width: 92%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+}
+dialog#modal::backdrop {
+  background: rgba(8,12,22,.7);
+  backdrop-filter: blur(3px);
+}
+.modal-body { padding: 20px 20px 6px; }
+.modal-title { margin: 0 0 6px; font-size: 17px; font-weight: 700; }
+.modal-msg { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.modal-field {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-bottom: 10px; font-size: 12px; color: var(--muted);
+}
+.modal-field input {
+  background: #0b1326; color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 11px; font-size: 14px; outline: none;
+}
+.modal-field input:focus { border-color: var(--accent); }
+.modal-actions {
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 12px 18px; background: rgba(0,0,0,.18);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 14px 14px;
+}
+.modal-btn {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 14px; font-size: 13px; cursor: pointer;
+  font-weight: 500;
+}
+.modal-btn:hover { background: #25345a; }
+.modal-btn.primary { background: var(--accent); color: #00131e; border-color: var(--accent); font-weight: 700; }
+.modal-btn.primary:hover { background: #6cc1ff; }
+.modal-btn.danger { color: #ffb4b4; border-color: #50313a; }
+.modal-btn.danger:hover { background: #3a1d28; }
+
+/* Locked mode: visually disable tile interactions */
+.album-locked .tile {
+  cursor: pointer;
+  opacity: 0.78;
+  filter: saturate(0.55);
+}
+.album-locked .tile::after {
+  content: '🔒';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.65);
+  opacity: 0;
+  transition: opacity .12s ease;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.album-locked .tile:hover::after { opacity: 1; }
+.album-locked .tile:hover { transform: none; }
+.album-locked .tile button.inc,
+.album-locked .tile button.dec { display: none; }
+.album-locked-write .actions .warn,
+.album-locked-write #import-btn {
+  opacity: 0.55;
+}
 @media (max-width: 480px) {
   .title-row h1 { font-size: 15px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
@@ -249,6 +319,15 @@ main {
 </header>
 
 <main id="album"></main>
+
+<dialog id="modal">
+  <div class="modal-body">
+    <h3 class="modal-title" id="modal-title"></h3>
+    <p class="modal-msg" id="modal-msg"></p>
+    <div id="modal-fields"></div>
+  </div>
+  <div class="modal-actions" id="modal-actions"></div>
+</dialog>
 
 <footer class="foot">
   <span id="storage-info">Armazenamento local (este navegador).</span>
@@ -574,6 +653,89 @@ function subscribeRealtime(code) {
     .subscribe();
 }
 
+// ========================== MODAL ==========================
+function showModal({ title, message, fields = [], actions }) {
+  return new Promise((resolve) => {
+    const dlg = document.getElementById('modal');
+    document.getElementById('modal-title').textContent = title || '';
+    const msgEl = document.getElementById('modal-msg');
+    msgEl.textContent = message || '';
+    msgEl.style.display = message ? '' : 'none';
+
+    const fieldsEl = document.getElementById('modal-fields');
+    fieldsEl.innerHTML = '';
+    const inputs = {};
+    for (const f of fields) {
+      const wrap = document.createElement('label');
+      wrap.className = 'modal-field';
+      const span = document.createElement('span');
+      span.textContent = f.label;
+      const inp = document.createElement('input');
+      inp.type = f.type || 'text';
+      inp.name = f.name;
+      inp.autocomplete = 'off';
+      if (f.placeholder) inp.placeholder = f.placeholder;
+      if (f.value != null) inp.value = f.value;
+      wrap.appendChild(span);
+      wrap.appendChild(inp);
+      fieldsEl.appendChild(wrap);
+      inputs[f.name] = inp;
+    }
+
+    const actionsEl = document.getElementById('modal-actions');
+    actionsEl.innerHTML = '';
+    let resolved = false;
+    const finish = (action) => {
+      if (resolved) return;
+      resolved = true;
+      const values = {};
+      for (const k in inputs) values[k] = inputs[k].value;
+      dlg.removeEventListener('close', onClose);
+      try { dlg.close(); } catch {}
+      resolve({ action, values });
+    };
+    const onClose = () => finish('cancel');
+
+    for (const a of actions) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'modal-btn ' + (a.kind || '');
+      btn.textContent = a.label;
+      btn.addEventListener('click', () => finish(a.action));
+      actionsEl.appendChild(btn);
+    }
+
+    const onKey = (e) => {
+      if (e.key === 'Enter') {
+        const primary = actions.find((a) => a.kind === 'primary');
+        if (primary) { e.preventDefault(); finish(primary.action); }
+      }
+    };
+    fieldsEl.addEventListener('keydown', onKey);
+    dlg.addEventListener('close', onClose);
+
+    dlg.showModal();
+    if (fields.length) setTimeout(() => inputs[fields[0].name].focus(), 0);
+  });
+}
+async function infoDialog(title, message) {
+  return showModal({
+    title, message,
+    actions: [{ label: 'OK', action: 'ok', kind: 'primary' }],
+  });
+}
+async function confirmDialog(title, message, opts = {}) {
+  const { okLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = false } = opts;
+  const r = await showModal({
+    title, message,
+    actions: [
+      { label: cancelLabel, action: 'cancel' },
+      { label: okLabel, action: 'ok', kind: danger ? 'danger' : 'primary' },
+    ],
+  });
+  return r.action === 'ok';
+}
+
 // ========================== BLOQUEIO POR SENHA ==========================
 let albumLocked = false;     // tem senha definida na nuvem
 const pwdKey = (code) => `album-pwd:${code}`;
@@ -595,41 +757,68 @@ async function fetchLockStatus(code) {
 }
 
 async function promptUnlock(code) {
-  const pwd = prompt(`Álbum "${code}" está bloqueado. Digite a senha:`);
-  if (pwd == null) return false;
+  const r = await showModal({
+    title: '🔒 Álbum bloqueado',
+    message: `Digite a senha para editar o álbum "${code}".`,
+    fields: [{ name: 'pwd', label: 'Senha', type: 'password' }],
+    actions: [
+      { label: 'Cancelar', action: 'cancel' },
+      { label: 'Desbloquear', action: 'ok', kind: 'primary' },
+    ],
+  });
+  if (r.action !== 'ok' || !r.values.pwd) return false;
   const { data, error } = await supabase.rpc('verify_album_password', {
-    p_code: code, p_password: pwd,
+    p_code: code, p_password: r.values.pwd,
   });
   if (error || !data) {
-    alert('Senha incorreta.');
+    await infoDialog('Senha incorreta', 'A senha digitada não confere com a do álbum.');
     return false;
   }
-  setPassword(code, pwd);
+  setPassword(code, r.values.pwd);
   updateLockUI();
+  render();
   return true;
 }
 
 async function promptSetPassword(code) {
   const wasLocked = albumLocked;
-  let current = null;
-  if (wasLocked) {
-    current = getPassword(code) || prompt('Digite a senha atual:');
-    if (current == null) return;
+  const cached = getPassword(code);
+  const fields = [];
+  if (wasLocked && !cached) {
+    fields.push({ name: 'current', label: 'Senha atual', type: 'password' });
   }
-  const next = prompt(wasLocked
-    ? 'Nova senha (vazio para REMOVER bloqueio):'
-    : 'Defina uma senha (vazio cancela):');
-  if (next == null) return;
+  fields.push({
+    name: 'next',
+    label: wasLocked ? 'Nova senha (vazio = remover bloqueio)' : 'Senha',
+    type: 'password',
+  });
+  const r = await showModal({
+    title: wasLocked ? 'Trocar senha' : 'Definir senha do álbum',
+    message: wasLocked
+      ? 'Para trocar a senha (ou removê-la, deixando o campo vazio).'
+      : 'Defina uma senha. Quem tiver a senha pode editar este álbum.',
+    fields,
+    actions: [
+      { label: 'Cancelar', action: 'cancel' },
+      { label: 'Salvar', action: 'ok', kind: 'primary' },
+    ],
+  });
+  if (r.action !== 'ok') return;
+  const next = (r.values.next || '');
+  const current = r.values.current || cached;
   if (!wasLocked && !next) return;
   const { error } = await supabase.rpc('set_album_password', {
-    p_code: code, p_new_password: next || '', p_current_password: current,
+    p_code: code, p_new_password: next, p_current_password: current || null,
   });
   if (error) {
     if (isWrongPwError(error)) {
-      alert('Senha atual incorreta.');
+      await infoDialog('Senha incorreta', 'A senha atual digitada está errada.');
       setPassword(code, null);
-    } else alert('Erro: ' + error.message);
+    } else {
+      await infoDialog('Erro', error.message);
+    }
     updateLockUI();
+    render();
     return;
   }
   if (next) {
@@ -640,6 +829,14 @@ async function promptSetPassword(code) {
     albumLocked = false;
   }
   updateLockUI();
+  render();
+}
+
+async function ensureWritable() {
+  if (!isCloud) return true;
+  if (!albumLocked) return true;
+  if (getPassword(userCode)) return true;
+  return await promptUnlock(userCode);
 }
 
 function updateLockUI() {
@@ -799,11 +996,15 @@ function render() {
   $('#total-progress').textContent =
     `${totOwned} / ${totSlots} (${pct.toFixed(1)}%) · ${totMiss} faltam · ${totDups} repetidas`;
   $('#progress-bar').style.width = `${pct.toFixed(1)}%`;
+  const readOnly = isCloud && albumLocked && !getPassword(userCode);
+  main.classList.toggle('album-locked', readOnly);
+  document.body.classList.toggle('album-locked-write', readOnly);
 }
 
-function adjust(code, n, action) {
+async function adjust(code, n, action) {
   const cell = state[code][n];
   if (!cell) return;
+  if (!(await ensureWritable())) return;
   if (action === 'inc') {
     cell.owned = true; cell.dups = (cell.dups || 0) + 1;
   } else if (action === 'dec') {
@@ -884,28 +1085,39 @@ $('#import-btn').addEventListener('click', () => $('#import-file').click());
 $('#import-file').addEventListener('change', async (e) => {
   const f = e.target.files[0];
   if (!f) return;
+  e.target.value = '';
+  if (!(await ensureWritable())) return;
   try {
     const obj = JSON.parse(await f.text());
     state = ensureCells(obj.state || obj);
     saveLocal(userCode, state);
     if (isCloud) await pushAllToCloud(userCode, state);
     render();
-  } catch (err) { alert('Arquivo inválido: ' + err.message); }
-  e.target.value = '';
+  } catch (err) { await infoDialog('Arquivo inválido', err.message); }
 });
 $('#reset').addEventListener('click', async () => {
-  if (!confirm('Carregar a lista inicial (semente)? Sobrescreve o álbum atual.')) return;
+  if (!(await confirmDialog('Carregar lista inicial',
+        'Isso sobrescreve o álbum atual com a lista semente.',
+        { okLabel: 'Carregar', danger: true }))) return;
+  if (!(await ensureWritable())) return;
   state = seededState();
   saveLocal(userCode, state);
-  if (isCloud) await pushAllToCloud(userCode, state);
+  if (isCloud) {
+    try { await pushAllToCloud(userCode, state); }
+    catch (e) { await infoDialog('Erro', e.message); }
+  }
   render();
 });
 $('#clear-all').addEventListener('click', async () => {
-  if (!confirm('Marcar TODAS como faltantes? Apaga tudo o que você tem neste código.')) return;
+  if (!(await confirmDialog('Esvaziar álbum',
+        'Marca TODAS as figurinhas como faltantes para o código atual.',
+        { okLabel: 'Esvaziar', danger: true }))) return;
+  if (!(await ensureWritable())) return;
   state = blankState();
   saveLocal(userCode, state);
   if (isCloud) {
-    try { await clearCloud(userCode); } catch (e) { alert('Erro: ' + e.message); }
+    try { await clearCloud(userCode); }
+    catch (e) { await infoDialog('Erro', e.message); }
   }
   render();
 });
@@ -932,7 +1144,8 @@ $('#show-help').addEventListener('click', (e) => {
 
 $('#lock-btn').addEventListener('click', async () => {
   if (!isCloud) {
-    alert('Bloqueio só funciona com a nuvem (Supabase) configurada.');
+    await infoDialog('Não disponível',
+      'O bloqueio por senha só funciona com a nuvem (Supabase) configurada.');
     return;
   }
   if (!albumLocked) {
@@ -943,28 +1156,36 @@ $('#lock-btn').addEventListener('click', async () => {
     await promptUnlock(userCode);
     return;
   }
-  // Bloqueado e desbloqueado nesta sessão → menu
-  const choice = prompt(
-    `Álbum "${userCode}" está desbloqueado nesta sessão.\n\n` +
-    '1 = Trocar senha\n' +
-    '2 = Remover bloqueio\n' +
-    '3 = Travar agora (sair)',
-    '1'
-  );
-  if (choice === '1') {
+  // Locked + unlocked in session → menu
+  const r = await showModal({
+    title: 'Álbum desbloqueado',
+    message: `Sessão atual desbloqueada para "${userCode}". O que deseja fazer?`,
+    actions: [
+      { label: 'Cancelar', action: 'cancel' },
+      { label: 'Travar nesta sessão', action: 'lock' },
+      { label: 'Remover bloqueio', action: 'remove', kind: 'danger' },
+      { label: 'Trocar senha', action: 'change', kind: 'primary' },
+    ],
+  });
+  if (r.action === 'change') {
     await promptSetPassword(userCode);
-  } else if (choice === '2') {
+  } else if (r.action === 'remove') {
+    if (!(await confirmDialog('Remover bloqueio?',
+          'Qualquer pessoa com o link poderá editar este álbum.',
+          { okLabel: 'Remover', danger: true }))) return;
     const cur = getPassword(userCode);
     const { error } = await supabase.rpc('set_album_password', {
       p_code: userCode, p_new_password: '', p_current_password: cur,
     });
-    if (error) { alert('Erro: ' + error.message); return; }
+    if (error) { await infoDialog('Erro', error.message); return; }
     setPassword(userCode, null);
     albumLocked = false;
     updateLockUI();
-  } else if (choice === '3') {
+    render();
+  } else if (r.action === 'lock') {
     setPassword(userCode, null);
     updateLockUI();
+    render();
   }
 });
 
