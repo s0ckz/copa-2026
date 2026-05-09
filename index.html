@@ -219,12 +219,43 @@ dialog#modal::backdrop {
   display: flex; flex-direction: column; gap: 4px;
   margin-bottom: 10px; font-size: 12px; color: var(--muted);
 }
-.modal-field input {
+.modal-field input,
+.modal-field textarea {
   background: #0b1326; color: var(--text);
   border: 1px solid var(--line); border-radius: 8px;
   padding: 9px 11px; font-size: 14px; outline: none;
+  font-family: inherit;
 }
-.modal-field input:focus { border-color: var(--accent); }
+.modal-field textarea {
+  width: 100%; box-sizing: border-box;
+  min-height: 180px; resize: vertical;
+  font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+  font-size: 12px; line-height: 1.45;
+}
+.modal-field input:focus,
+.modal-field textarea:focus { border-color: var(--accent); }
+.trade-result h4 {
+  margin: 14px 0 4px; font-size: 11px; font-weight: 700;
+  color: var(--accent); letter-spacing: 0.6px; text-transform: uppercase;
+}
+.trade-result h4.good { color: var(--owned); }
+.trade-result h4.warn { color: var(--dup); }
+.trade-result h4.muted { color: var(--muted); }
+.trade-result .row {
+  padding: 1px 0; font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+  font-size: 12px; line-height: 1.55;
+}
+.trade-result .row strong {
+  display: inline-block; min-width: 56px; color: var(--accent);
+}
+.trade-result .empty { color: var(--muted); font-style: italic; font-size: 12px; }
+.trade-result .summary {
+  font-size: 12px; color: var(--muted);
+  margin: 0 0 10px; padding: 8px 10px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.modal-body.scroll { max-height: 60vh; overflow-y: auto; }
 .modal-actions {
   display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
   padding: 12px 18px; background: rgba(0,0,0,.18);
@@ -308,6 +339,7 @@ dialog#modal::backdrop {
       <button id="export-text" title="Lista no formato Figuritas">⬇ Lista</button>
       <button id="import-btn" title="Importar JSON">⬆ Importar</button>
       <input id="import-file" type="file" accept="application/json" hidden />
+      <button id="trade-btn" title="Calcular trocas a partir de uma lista colada">🤝 Trocas</button>
       <button id="reset" class="warn" title="Carregar lista inicial (estado semente)">↺ Lista inicial</button>
       <button id="clear-all" class="warn" title="Marcar todas como faltantes">✕ Esvaziar</button>
     </div>
@@ -654,7 +686,7 @@ function subscribeRealtime(code) {
 }
 
 // ========================== MODAL ==========================
-function showModal({ title, message, fields = [], actions }) {
+function showModal({ title, message, fields = [], actions, bodyHtml, scroll }) {
   return new Promise((resolve) => {
     const dlg = document.getElementById('modal');
     document.getElementById('modal-title').textContent = title || '';
@@ -664,14 +696,27 @@ function showModal({ title, message, fields = [], actions }) {
 
     const fieldsEl = document.getElementById('modal-fields');
     fieldsEl.innerHTML = '';
+    const bodyEl = document.querySelector('#modal .modal-body');
+    bodyEl.classList.toggle('scroll', !!scroll);
+    if (bodyHtml) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = bodyHtml;
+      fieldsEl.appendChild(wrap);
+    }
     const inputs = {};
     for (const f of fields) {
       const wrap = document.createElement('label');
       wrap.className = 'modal-field';
       const span = document.createElement('span');
       span.textContent = f.label;
-      const inp = document.createElement('input');
-      inp.type = f.type || 'text';
+      let inp;
+      if (f.type === 'textarea') {
+        inp = document.createElement('textarea');
+        if (f.rows) inp.rows = f.rows;
+      } else {
+        inp = document.createElement('input');
+        inp.type = f.type || 'text';
+      }
       inp.name = f.name;
       inp.autocomplete = 'off';
       if (f.placeholder) inp.placeholder = f.placeholder;
@@ -1144,6 +1189,179 @@ $('#show-help').addEventListener('click', (e) => {
   e.preventDefault();
   const h = $('#help'); h.style.display = h.style.display === 'none' ? 'block' : 'none';
 });
+
+// ========================== TROCAS ==========================
+// Suporta apenas o formato exportado pelo botão "⬇ Lista":
+//   Figurinhas App - Lista
+//   Eua Méx Can 26
+//   Faltantes
+//   FWC 🏆: 00, 1, 2, 3, 4
+//   ...
+//   Repetidas
+//   ARG 🇦🇷: 1, 9
+function parseTradeList(text) {
+  const result = { Faltantes: {}, Repetidas: {} };
+  const validCodes = new Set(SECTIONS.map((s) => s.code));
+  let mode = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (/^figurinhas\b/i.test(line)) continue;
+    if (/^eua\b/i.test(line)) continue;
+    if (/^faltantes\b/i.test(line)) { mode = 'Faltantes'; continue; }
+    if (/^repetidas\b/i.test(line)) { mode = 'Repetidas'; continue; }
+    if (!mode) continue;
+
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const head = line.slice(0, colon);
+    const tail = line.slice(colon + 1);
+
+    const m = head.match(/^([A-Z]{3,5}(?:-[A-Z])?)\b/);
+    if (!m) continue;
+    let code = m[1].toUpperCase();
+    if (code === 'FWC') {
+      if (/🏆/.test(line)) code = 'FWC-T';
+      else if (/🌎/.test(line)) code = 'FWC-W';
+      else if (/📜/.test(line)) code = 'FWC-L';
+      else continue;
+    }
+    if (!validCodes.has(code)) continue;
+
+    const nums = tail.split(/[\s,]+/).filter(Boolean)
+      .map((t) => parseInt(t, 10))
+      .filter((n) => !Number.isNaN(n));
+    if (!nums.length) continue;
+
+    result[mode][code] = (result[mode][code] || []).concat(nums);
+  }
+  return result;
+}
+
+function flagOf(code) {
+  const sec = SECTIONS.find((s) => s.code === code);
+  return sec ? sec.flag : '';
+}
+function fmtPairs(arr) {
+  if (!arr.length) return '<p class="empty">— nenhuma —</p>';
+  const by = {};
+  for (const [c, n] of arr) (by[c] = by[c] || []).push(n);
+  return Object.entries(by)
+    .map(([c, ns]) => `<div class="row"><strong>${flagOf(c)} ${c}</strong> ${ns.sort((a, b) => a - b).map(fmtNum).join(', ')}</div>`)
+    .join('');
+}
+function classifyOffer(st, items) {
+  const need = [], haveAlready = [], haveDup = [], unknown = [];
+  for (const [code, nums] of Object.entries(items)) {
+    for (const n of nums) {
+      const c = st[code]?.[n];
+      if (!c) { unknown.push([code, n]); continue; }
+      if (!c.owned) need.push([code, n]);
+      else if (c.dups > 0) haveDup.push([code, n]);
+      else haveAlready.push([code, n]);
+    }
+  }
+  return { need, haveAlready, haveDup, unknown };
+}
+function classifyRequest(st, items) {
+  const canGive = [], onlyOne = [], cantHelp = [], unknown = [];
+  for (const [code, nums] of Object.entries(items)) {
+    for (const n of nums) {
+      const c = st[code]?.[n];
+      if (!c) { unknown.push([code, n]); continue; }
+      if (c.owned && c.dups > 0) canGive.push([code, n]);
+      else if (c.owned) onlyOne.push([code, n]);
+      else cantHelp.push([code, n]);
+    }
+  }
+  return { canGive, onlyOne, cantHelp, unknown };
+}
+
+function renderTradeAnalysis(parsed) {
+  let html = '';
+  const offers   = Object.keys(parsed.Repetidas).length ? parsed.Repetidas : null;
+  const requests = Object.keys(parsed.Faltantes).length ? parsed.Faltantes : null;
+
+  if (offers) {
+    const r = classifyOffer(state, offers);
+    const total = r.need.length + r.haveAlready.length + r.haveDup.length;
+    html += `<div class="summary">📥 <b>Repetidas</b> deles → pegar <b>${r.need.length}</b>, já tenho ${r.haveAlready.length}, repe-de-repe ${r.haveDup.length} (de ${total}).</div>`;
+    html += `<h4 class="good">Pegar — preciso (${r.need.length})</h4>${fmtPairs(r.need)}`;
+    if (r.haveAlready.length) html += `<h4 class="muted">Já tenho única (${r.haveAlready.length})</h4>${fmtPairs(r.haveAlready)}`;
+    if (r.haveDup.length) html += `<h4 class="warn">Já tenho repe — pular (${r.haveDup.length})</h4>${fmtPairs(r.haveDup)}`;
+  }
+  if (requests) {
+    const r = classifyRequest(state, requests);
+    const total = r.canGive.length + r.onlyOne.length + r.cantHelp.length;
+    html += `<div class="summary">📤 <b>Faltantes</b> deles → posso dar <b>${r.canGive.length}</b> repe, tenho ${r.onlyOne.length} única, não tenho ${r.cantHelp.length} (de ${total}).</div>`;
+    html += `<h4 class="good">Posso dar — minha repetida (${r.canGive.length})</h4>${fmtPairs(r.canGive)}`;
+    if (r.onlyOne.length) html += `<h4 class="warn">Tenho só 1 (perderia minha) (${r.onlyOne.length})</h4>${fmtPairs(r.onlyOne)}`;
+    if (r.cantHelp.length) html += `<h4 class="muted">Não tenho — não posso ajudar (${r.cantHelp.length})</h4>${fmtPairs(r.cantHelp)}`;
+  }
+  if (!offers && !requests) {
+    html = '<p class="empty">Nenhuma seção <b>Faltantes</b> ou <b>Repetidas</b> reconhecida. Use o formato exportado pelo botão "⬇ Lista".</p>';
+  }
+  return `<div class="trade-result">${html}</div>`;
+}
+
+function tradeSummaryText(parsed) {
+  const lines = [];
+  const fmt = (arr) => {
+    const by = {};
+    for (const [c, n] of arr) (by[c] = by[c] || []).push(n);
+    return Object.entries(by).map(([c, ns]) => `${c}: ${ns.sort((a, b) => a - b).map(fmtNum).join(', ')}`).join('\n');
+  };
+  if (Object.keys(parsed.Repetidas).length) {
+    const r = classifyOffer(state, parsed.Repetidas);
+    lines.push('Pegar (preciso):', fmt(r.need) || '(nenhuma)');
+  }
+  if (Object.keys(parsed.Faltantes).length) {
+    const r = classifyRequest(state, parsed.Faltantes);
+    if (lines.length) lines.push('');
+    lines.push('Posso dar (minha repe):', fmt(r.canGive) || '(nenhuma)');
+  }
+  return lines.join('\n');
+}
+
+async function openTradeDialog() {
+  const r = await showModal({
+    title: '🤝 Calcular trocas',
+    message: 'Cole uma lista no formato exportado pelo botão "⬇ Lista" (com cabeçalhos Faltantes / Repetidas). Eu cruzo com o seu álbum e mostro o que pegar e o que oferecer.',
+    fields: [{
+      name: 'list', label: 'Lista colada', type: 'textarea',
+      placeholder: 'Figurinhas App - Lista\nEua Méx Can 26\nFaltantes\nMEX 🇲🇽: 2, 6, 16\nBRA 🇧🇷: 1, 13, 19\n\nRepetidas\nARG 🇦🇷: 1, 9',
+    }],
+    actions: [
+      { label: 'Cancelar', action: 'cancel' },
+      { label: 'Analisar', action: 'ok', kind: 'primary' },
+    ],
+  });
+  if (r.action !== 'ok' || !r.values.list) return;
+  const parsed = parseTradeList(r.values.list);
+  const html = renderTradeAnalysis(parsed);
+  const r2 = await showModal({
+    title: '🤝 Resultado da troca',
+    bodyHtml: html,
+    scroll: true,
+    actions: [
+      { label: 'Voltar', action: 'back' },
+      { label: 'Copiar resumo', action: 'copy' },
+      { label: 'Fechar', action: 'ok', kind: 'primary' },
+    ],
+  });
+  if (r2.action === 'copy') {
+    try {
+      await navigator.clipboard.writeText(tradeSummaryText(parsed));
+      await infoDialog('Copiado', 'Resumo copiado para a área de transferência.');
+    } catch (e) {
+      await infoDialog('Erro', 'Não foi possível copiar: ' + e.message);
+    }
+  } else if (r2.action === 'back') {
+    return openTradeDialog();
+  }
+}
+
+$('#trade-btn').addEventListener('click', openTradeDialog);
 
 $('#lock-btn').addEventListener('click', async () => {
   if (!isCloud) {
