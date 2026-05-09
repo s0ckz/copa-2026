@@ -46,7 +46,7 @@ create or replace function set_album_password(
   p_current_password text default null
 ) returns void
 language plpgsql security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare v_existing text;
 begin
@@ -73,7 +73,7 @@ end $$;
 create or replace function verify_album_password(p_code text, p_password text)
 returns boolean
 language plpgsql security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare v_hash text;
 begin
@@ -88,7 +88,7 @@ create or replace function set_cell(
   p_have boolean, p_dups int, p_password text default null
 ) returns void
 language plpgsql security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare v_hash text;
 begin
@@ -107,7 +107,7 @@ create or replace function set_cells_bulk(
   p_code text, p_cells jsonb, p_password text default null
 ) returns void
 language plpgsql security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare v_hash text;
 begin
@@ -130,7 +130,7 @@ end $$;
 create or replace function clear_album(p_code text, p_password text default null)
 returns void
 language plpgsql security definer
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
 declare v_hash text;
 begin
