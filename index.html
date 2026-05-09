@@ -99,9 +99,29 @@ body {
 }
 main {
   max-width: 1240px; margin: 0 auto; padding: 16px;
-  display: grid; grid-template-columns: 1fr; gap: 14px;
+  display: flex; flex-direction: column; gap: 14px;
 }
-@media (min-width: 900px) { main { grid-template-columns: 1fr 1fr; } }
+.group {
+  background: rgba(255,255,255,.015);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.group-title {
+  margin: 2px 4px 10px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  color: var(--accent); text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.group-title .group-stats {
+  color: var(--muted); font-weight: 500; font-size: 11px;
+  letter-spacing: 0.4px; text-transform: none;
+}
+.group-grid {
+  display: grid; grid-template-columns: 1fr; gap: 10px;
+}
+@media (min-width: 720px)  { .group-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1100px) { .group-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
 .team {
   background: var(--panel); border: 1px solid var(--line);
   border-radius: 12px; padding: 12px;
@@ -199,6 +219,7 @@ main {
       <span class="label">código</span>
       <input id="user-code" autocomplete="off" spellcheck="false" />
       <button id="copy-link" title="Copiar link" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔗</button>
+      <button id="lock-btn" title="Bloquear/desbloquear álbum" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔓</button>
     </span>
     <div class="progress-wrap">
       <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
@@ -266,57 +287,69 @@ const STARTER_SEED_FOR = 's0ckz-2026';
 const RANGE = (n) => Array.from({ length: n }, (_, i) => i + 1);
 
 const SECTIONS = [
-  { code: 'FWC-T', name: 'FWC Especiais',         flag: '🏆', start: 0, size: 4 },
-  { code: 'FWC-W', name: 'FWC Bola e Países',     flag: '🌎', start: 5, size: 8 },
-  { code: 'FWC-L', name: 'FWC História',          flag: '📜', start: 9, size: 19 },
-  { code: 'MEX', name: 'México',              flag: '🇲🇽', size: 20 },
-  { code: 'RSA', name: 'África do Sul',       flag: '🇿🇦', size: 20 },
-  { code: 'KOR', name: 'Coreia do Sul',       flag: '🇰🇷', size: 20 },
-  { code: 'CZE', name: 'República Tcheca',    flag: '🇨🇿', size: 20 },
-  { code: 'CAN', name: 'Canadá',              flag: '🇨🇦', size: 20 },
-  { code: 'BIH', name: 'Bósnia e Herzegovina',flag: '🇧🇦', size: 20 },
-  { code: 'QAT', name: 'Catar',               flag: '🇶🇦', size: 20 },
-  { code: 'SUI', name: 'Suíça',               flag: '🇨🇭', size: 20 },
-  { code: 'BRA', name: 'Brasil',              flag: '🇧🇷', size: 20 },
-  { code: 'MAR', name: 'Marrocos',            flag: '🇲🇦', size: 20 },
-  { code: 'HAI', name: 'Haiti',               flag: '🇭🇹', size: 20 },
-  { code: 'SCO', name: 'Escócia',             flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', size: 20 },
-  { code: 'USA', name: 'Estados Unidos',      flag: '🇺🇸', size: 20 },
-  { code: 'PAR', name: 'Paraguai',            flag: '🇵🇾', size: 20 },
-  { code: 'AUS', name: 'Austrália',           flag: '🇦🇺', size: 20 },
-  { code: 'TUR', name: 'Turquia',             flag: '🇹🇷', size: 20 },
-  { code: 'GER', name: 'Alemanha',            flag: '🇩🇪', size: 20 },
-  { code: 'CUW', name: 'Curaçao',             flag: '🇨🇼', size: 20 },
-  { code: 'CIV', name: 'Costa do Marfim',     flag: '🇨🇮', size: 20 },
-  { code: 'ECU', name: 'Equador',             flag: '🇪🇨', size: 20 },
-  { code: 'NED', name: 'Países Baixos',       flag: '🇳🇱', size: 20 },
-  { code: 'JPN', name: 'Japão',               flag: '🇯🇵', size: 20 },
-  { code: 'SWE', name: 'Suécia',              flag: '🇸🇪', size: 20 },
-  { code: 'TUN', name: 'Tunísia',             flag: '🇹🇳', size: 20 },
-  { code: 'BEL', name: 'Bélgica',             flag: '🇧🇪', size: 20 },
-  { code: 'EGY', name: 'Egito',               flag: '🇪🇬', size: 20 },
-  { code: 'IRN', name: 'Irã',                 flag: '🇮🇷', size: 20 },
-  { code: 'NZL', name: 'Nova Zelândia',       flag: '🇳🇿', size: 20 },
-  { code: 'ESP', name: 'Espanha',             flag: '🇪🇸', size: 20 },
-  { code: 'CPV', name: 'Cabo Verde',          flag: '🇨🇻', size: 20 },
-  { code: 'KSA', name: 'Arábia Saudita',      flag: '🇸🇦', size: 20 },
-  { code: 'URU', name: 'Uruguai',             flag: '🇺🇾', size: 20 },
-  { code: 'FRA', name: 'França',              flag: '🇫🇷', size: 20 },
-  { code: 'SEN', name: 'Senegal',             flag: '🇸🇳', size: 20 },
-  { code: 'IRQ', name: 'Iraque',              flag: '🇮🇶', size: 20 },
-  { code: 'NOR', name: 'Noruega',             flag: '🇳🇴', size: 20 },
-  { code: 'ARG', name: 'Argentina',           flag: '🇦🇷', size: 20 },
-  { code: 'ALG', name: 'Argélia',             flag: '🇩🇿', size: 20 },
-  { code: 'AUT', name: 'Áustria',             flag: '🇦🇹', size: 20 },
-  { code: 'JOR', name: 'Jordânia',            flag: '🇯🇴', size: 20 },
-  { code: 'POR', name: 'Portugal',            flag: '🇵🇹', size: 20 },
-  { code: 'COD', name: 'RD do Congo',         flag: '🇨🇩', size: 20 },
-  { code: 'UZB', name: 'Uzbequistão',         flag: '🇺🇿', size: 20 },
-  { code: 'COL', name: 'Colômbia',            flag: '🇨🇴', size: 20 },
-  { code: 'ENG', name: 'Inglaterra',          flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', size: 20 },
-  { code: 'CRO', name: 'Croácia',             flag: '🇭🇷', size: 20 },
-  { code: 'GHA', name: 'Gana',                flag: '🇬🇭', size: 20 },
-  { code: 'PAN', name: 'Panamá',              flag: '🇵🇦', size: 20 },
+  { code: 'FWC-T', name: 'FWC Especiais',         flag: '🏆', start: 0, size: 4,  group: 'FWC' },
+  { code: 'FWC-W', name: 'FWC Bola e Países',     flag: '🌎', start: 5, size: 8,  group: 'FWC' },
+  { code: 'FWC-L', name: 'FWC História',          flag: '📜', start: 9, size: 19, group: 'FWC' },
+  // Grupo A
+  { code: 'MEX', name: 'México',              flag: '🇲🇽', size: 20, group: 'A' },
+  { code: 'RSA', name: 'África do Sul',       flag: '🇿🇦', size: 20, group: 'A' },
+  { code: 'KOR', name: 'Coreia do Sul',       flag: '🇰🇷', size: 20, group: 'A' },
+  { code: 'CZE', name: 'República Tcheca',    flag: '🇨🇿', size: 20, group: 'A' },
+  // Grupo B
+  { code: 'CAN', name: 'Canadá',              flag: '🇨🇦', size: 20, group: 'B' },
+  { code: 'BIH', name: 'Bósnia e Herzegovina',flag: '🇧🇦', size: 20, group: 'B' },
+  { code: 'QAT', name: 'Catar',               flag: '🇶🇦', size: 20, group: 'B' },
+  { code: 'SUI', name: 'Suíça',               flag: '🇨🇭', size: 20, group: 'B' },
+  // Grupo C
+  { code: 'BRA', name: 'Brasil',              flag: '🇧🇷', size: 20, group: 'C' },
+  { code: 'MAR', name: 'Marrocos',            flag: '🇲🇦', size: 20, group: 'C' },
+  { code: 'HAI', name: 'Haiti',               flag: '🇭🇹', size: 20, group: 'C' },
+  { code: 'SCO', name: 'Escócia',             flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', size: 20, group: 'C' },
+  // Grupo D
+  { code: 'USA', name: 'Estados Unidos',      flag: '🇺🇸', size: 20, group: 'D' },
+  { code: 'PAR', name: 'Paraguai',            flag: '🇵🇾', size: 20, group: 'D' },
+  { code: 'AUS', name: 'Austrália',           flag: '🇦🇺', size: 20, group: 'D' },
+  { code: 'TUR', name: 'Turquia',             flag: '🇹🇷', size: 20, group: 'D' },
+  // Grupo E
+  { code: 'GER', name: 'Alemanha',            flag: '🇩🇪', size: 20, group: 'E' },
+  { code: 'CUW', name: 'Curaçao',             flag: '🇨🇼', size: 20, group: 'E' },
+  { code: 'CIV', name: 'Costa do Marfim',     flag: '🇨🇮', size: 20, group: 'E' },
+  { code: 'ECU', name: 'Equador',             flag: '🇪🇨', size: 20, group: 'E' },
+  // Grupo F
+  { code: 'NED', name: 'Países Baixos',       flag: '🇳🇱', size: 20, group: 'F' },
+  { code: 'JPN', name: 'Japão',               flag: '🇯🇵', size: 20, group: 'F' },
+  { code: 'SWE', name: 'Suécia',              flag: '🇸🇪', size: 20, group: 'F' },
+  { code: 'TUN', name: 'Tunísia',             flag: '🇹🇳', size: 20, group: 'F' },
+  // Grupo G
+  { code: 'BEL', name: 'Bélgica',             flag: '🇧🇪', size: 20, group: 'G' },
+  { code: 'EGY', name: 'Egito',               flag: '🇪🇬', size: 20, group: 'G' },
+  { code: 'IRN', name: 'Irã',                 flag: '🇮🇷', size: 20, group: 'G' },
+  { code: 'NZL', name: 'Nova Zelândia',       flag: '🇳🇿', size: 20, group: 'G' },
+  // Grupo H
+  { code: 'ESP', name: 'Espanha',             flag: '🇪🇸', size: 20, group: 'H' },
+  { code: 'CPV', name: 'Cabo Verde',          flag: '🇨🇻', size: 20, group: 'H' },
+  { code: 'KSA', name: 'Arábia Saudita',      flag: '🇸🇦', size: 20, group: 'H' },
+  { code: 'URU', name: 'Uruguai',             flag: '🇺🇾', size: 20, group: 'H' },
+  // Grupo I
+  { code: 'FRA', name: 'França',              flag: '🇫🇷', size: 20, group: 'I' },
+  { code: 'SEN', name: 'Senegal',             flag: '🇸🇳', size: 20, group: 'I' },
+  { code: 'IRQ', name: 'Iraque',              flag: '🇮🇶', size: 20, group: 'I' },
+  { code: 'NOR', name: 'Noruega',             flag: '🇳🇴', size: 20, group: 'I' },
+  // Grupo J
+  { code: 'ARG', name: 'Argentina',           flag: '🇦🇷', size: 20, group: 'J' },
+  { code: 'ALG', name: 'Argélia',             flag: '🇩🇿', size: 20, group: 'J' },
+  { code: 'AUT', name: 'Áustria',             flag: '🇦🇹', size: 20, group: 'J' },
+  { code: 'JOR', name: 'Jordânia',            flag: '🇯🇴', size: 20, group: 'J' },
+  // Grupo K
+  { code: 'POR', name: 'Portugal',            flag: '🇵🇹', size: 20, group: 'K' },
+  { code: 'COD', name: 'RD do Congo',         flag: '🇨🇩', size: 20, group: 'K' },
+  { code: 'UZB', name: 'Uzbequistão',         flag: '🇺🇿', size: 20, group: 'K' },
+  { code: 'COL', name: 'Colômbia',            flag: '🇨🇴', size: 20, group: 'K' },
+  // Grupo L
+  { code: 'ENG', name: 'Inglaterra',          flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', size: 20, group: 'L' },
+  { code: 'CRO', name: 'Croácia',             flag: '🇭🇷', size: 20, group: 'L' },
+  { code: 'GHA', name: 'Gana',                flag: '🇬🇭', size: 20, group: 'L' },
+  { code: 'PAN', name: 'Panamá',              flag: '🇵🇦', size: 20, group: 'L' },
 ];
 
 // Faltantes do usuário (lista inicial seed).
@@ -454,36 +487,68 @@ async function fetchCloud(code) {
   if (error) throw error;
   return data;
 }
+function isWrongPwError(e) {
+  if (!e) return false;
+  const msg = String(e.message || '');
+  return e.code === 'P0001' || /wrong_password/i.test(msg);
+}
 async function pushAllToCloud(code, st) {
-  const rows = [];
+  const cells = [];
   for (const sec of SECTIONS) {
     for (const numStr of Object.keys(st[sec.code] || {})) {
       const n = parseInt(numStr, 10);
       const c = st[sec.code][n];
-      rows.push({
-        user_code: code, section_code: sec.code, number: n,
+      cells.push({
+        section_code: sec.code, number: n,
         have: !!c.owned, dups: c.dups | 0,
       });
     }
   }
   const chunkSize = 500;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const slice = rows.slice(i, i + chunkSize);
-    const { error } = await supabase.from('sticker_cells').upsert(slice, {
-      onConflict: 'user_code,section_code,number',
+  for (let i = 0; i < cells.length; i += chunkSize) {
+    const slice = cells.slice(i, i + chunkSize);
+    const { error } = await supabase.rpc('set_cells_bulk', {
+      p_code: code, p_cells: slice, p_password: getPassword(code),
     });
-    if (error) throw error;
+    if (error) {
+      if (isWrongPwError(error)) {
+        const ok = await promptUnlock(code);
+        if (ok) { i -= chunkSize; continue; }
+      }
+      throw error;
+    }
   }
 }
 async function upsertCell(code, sectionCode, n, cell) {
   if (!supabase) return;
   setSync('syncing');
-  const { error } = await supabase.from('sticker_cells').upsert({
-    user_code: code, section_code: sectionCode, number: n,
-    have: !!cell.owned, dups: cell.dups | 0,
-  }, { onConflict: 'user_code,section_code,number' });
-  if (error) { console.error(error); setSync('error'); }
-  else setSync('synced');
+  const { error } = await supabase.rpc('set_cell', {
+    p_code: code, p_section: sectionCode, p_number: n,
+    p_have: !!cell.owned, p_dups: cell.dups | 0,
+    p_password: getPassword(code),
+  });
+  if (error) {
+    if (isWrongPwError(error)) {
+      const ok = await promptUnlock(code);
+      if (ok) return upsertCell(code, sectionCode, n, cell);
+      setSync('error');
+      return;
+    }
+    console.error(error); setSync('error');
+  } else setSync('synced');
+}
+async function clearCloud(code) {
+  if (!supabase) return;
+  const { error } = await supabase.rpc('clear_album', {
+    p_code: code, p_password: getPassword(code),
+  });
+  if (error) {
+    if (isWrongPwError(error)) {
+      const ok = await promptUnlock(code);
+      if (ok) return clearCloud(code);
+    }
+    throw error;
+  }
 }
 function subscribeRealtime(code) {
   if (realtimeChannel) supabase.removeChannel(realtimeChannel);
@@ -510,6 +575,92 @@ function subscribeRealtime(code) {
     .subscribe();
 }
 
+// ========================== BLOQUEIO POR SENHA ==========================
+let albumLocked = false;     // tem senha definida na nuvem
+const pwdKey = (code) => `album-pwd:${code}`;
+const getPassword = (code) => sessionStorage.getItem(pwdKey(code)) || null;
+const setPassword = (code, pwd) => {
+  if (pwd) sessionStorage.setItem(pwdKey(code), pwd);
+  else sessionStorage.removeItem(pwdKey(code));
+};
+
+async function fetchLockStatus(code) {
+  if (!supabase) return false;
+  const { data, error } = await supabase
+    .from('album_locks')
+    .select('user_code')
+    .eq('user_code', code)
+    .maybeSingle();
+  if (error) { console.error('lock check', error); return false; }
+  return !!data;
+}
+
+async function promptUnlock(code) {
+  const pwd = prompt(`Álbum "${code}" está bloqueado. Digite a senha:`);
+  if (pwd == null) return false;
+  const { data, error } = await supabase.rpc('verify_album_password', {
+    p_code: code, p_password: pwd,
+  });
+  if (error || !data) {
+    alert('Senha incorreta.');
+    return false;
+  }
+  setPassword(code, pwd);
+  updateLockUI();
+  return true;
+}
+
+async function promptSetPassword(code) {
+  const wasLocked = albumLocked;
+  let current = null;
+  if (wasLocked) {
+    current = getPassword(code) || prompt('Digite a senha atual:');
+    if (current == null) return;
+  }
+  const next = prompt(wasLocked
+    ? 'Nova senha (vazio para REMOVER bloqueio):'
+    : 'Defina uma senha (vazio cancela):');
+  if (next == null) return;
+  if (!wasLocked && !next) return;
+  const { error } = await supabase.rpc('set_album_password', {
+    p_code: code, p_new_password: next || '', p_current_password: current,
+  });
+  if (error) {
+    if (isWrongPwError(error)) {
+      alert('Senha atual incorreta.');
+      setPassword(code, null);
+    } else alert('Erro: ' + error.message);
+    updateLockUI();
+    return;
+  }
+  if (next) {
+    setPassword(code, next);
+    albumLocked = true;
+  } else {
+    setPassword(code, null);
+    albumLocked = false;
+  }
+  updateLockUI();
+}
+
+function updateLockUI() {
+  const btn = document.getElementById('lock-btn');
+  if (!btn) return;
+  if (!isCloud) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  const hasPwd = !!getPassword(userCode);
+  if (!albumLocked) {
+    btn.textContent = '🔓';
+    btn.title = 'Sem senha — clique para definir uma';
+  } else if (hasPwd) {
+    btn.textContent = '🔓✓';
+    btn.title = 'Desbloqueado nesta sessão';
+  } else {
+    btn.textContent = '🔒';
+    btn.title = 'Bloqueado — clique para desbloquear';
+  }
+}
+
 // ========================== CICLO DE VIDA ==========================
 function setSync(kind) {
   document.getElementById('sync-dot').className = 'sync-dot ' + kind;
@@ -532,11 +683,12 @@ async function loadForCode(code) {
   if (isCloud) {
     setSync('syncing');
     try {
+      albumLocked = await fetchLockStatus(code);
       const rows = await fetchCloud(code);
       if (rows.length === 0) {
         if (code === STARTER_SEED_FOR) {
           state = seededState();
-          await pushAllToCloud(code, state);
+          if (!albumLocked) await pushAllToCloud(code, state);
         } else {
           state = blankState();
         }
@@ -553,13 +705,13 @@ async function loadForCode(code) {
     } catch (e) {
       console.error(e);
       setSync('error');
-      // fallback
       state = loadLocal(code) || (code === STARTER_SEED_FOR ? seededState() : blankState());
     }
   } else {
     state = loadLocal(code) || (code === STARTER_SEED_FOR ? seededState() : blankState());
     setSync('local');
   }
+  updateLockUI();
   render();
 }
 
@@ -596,46 +748,54 @@ function sectionStats(sec) {
   return { slots, owned, missing, dups };
 }
 
+function buildTeamHtml(sec) {
+  if (!matchesSearch(sec)) return null;
+  const st = sectionStats(sec);
+  const start = sec.start ?? 1;
+  const tiles = [];
+  for (let n = start; n <= sec.size; n++) {
+    const c = state[sec.code][n];
+    if (!passesFilter(c)) continue;
+    const cls = tileClass(c);
+    const dupBadge = (c.dups || 0) > 0 ? `<span class="dup-badge">×${c.dups + 1}</span>` : '';
+    tiles.push(`<div class="${cls}" data-code="${sec.code}" data-num="${n}" title="${sec.code} #${fmtNum(n)}"><button class="dec" data-act="dec" tabindex="-1">−</button><span class="num">${fmtNum(n)}</span><button class="inc" data-act="inc" tabindex="-1">+</button>${dupBadge}</div>`);
+  }
+  if (tiles.length === 0) return null;
+  const pct = st.slots ? Math.round((st.owned / st.slots) * 100) : 0;
+  return `<section class="team"><header class="team-header"><h2><span class="flag">${sec.flag}</span> <span class="code">${sec.code}</span> <span class="name">${sec.name}</span></h2><div class="team-stats"><span class="badge owned-badge">${st.owned}/${st.slots}</span>${st.dups ? `<span class="badge dup-badge-inline">+${st.dups} repe</span>` : ''}<div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div></div></header><div class="grid">${tiles.join('')}</div></section>`;
+}
+
 function render() {
   const main = $('#album');
-  const frag = document.createDocumentFragment();
   let totOwned = 0, totSlots = 0, totDups = 0, totMiss = 0;
+  // Totals across all sections (filters/search affect what's rendered, not totals)
   for (const sec of SECTIONS) {
     const st = sectionStats(sec);
     totOwned += st.owned; totSlots += st.slots; totDups += st.dups; totMiss += st.missing;
-    if (!matchesSearch(sec)) continue;
-    const start = sec.start ?? 1;
-    const tiles = [];
-    for (let n = start; n <= sec.size; n++) {
-      const c = state[sec.code][n];
-      if (!passesFilter(c)) continue;
-      const cls = tileClass(c);
-      const dupBadge = (c.dups || 0) > 0 ? `<span class="dup-badge">×${c.dups + 1}</span>` : '';
-      tiles.push(`
-        <div class="${cls}" data-code="${sec.code}" data-num="${n}" title="${sec.code} #${fmtNum(n)} — clique alterna; +/- ajusta repetidas">
-          <button class="dec" data-act="dec" tabindex="-1">−</button>
-          <span class="num">${fmtNum(n)}</span>
-          <button class="inc" data-act="inc" tabindex="-1">+</button>
-          ${dupBadge}
-        </div>`);
-    }
-    if (tiles.length === 0) continue;
-    const pct = st.slots ? Math.round((st.owned / st.slots) * 100) : 0;
-    const sx = document.createElement('section');
-    sx.className = 'team';
-    sx.innerHTML = `
-      <header class="team-header">
-        <h2><span class="flag">${sec.flag}</span> <span class="code">${sec.code}</span> <span class="name">${sec.name}</span></h2>
-        <div class="team-stats">
-          <span class="badge owned-badge">${st.owned}/${st.slots}</span>
-          ${st.dups ? `<span class="badge dup-badge-inline">+${st.dups} repe</span>` : ''}
-          <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
-        </div>
-      </header>
-      <div class="grid">${tiles.join('')}</div>`;
-    frag.appendChild(sx);
   }
-  main.replaceChildren(frag);
+  // Group sections
+  const byGroup = new Map();
+  const order = [];
+  for (const sec of SECTIONS) {
+    const g = sec.group || '?';
+    if (!byGroup.has(g)) { byGroup.set(g, []); order.push(g); }
+    byGroup.get(g).push(sec);
+  }
+  let html = '';
+  for (const g of order) {
+    const sections = byGroup.get(g);
+    let gOwned = 0, gSlots = 0, gDups = 0;
+    for (const sec of sections) {
+      const st = sectionStats(sec);
+      gOwned += st.owned; gSlots += st.slots; gDups += st.dups;
+    }
+    const cards = sections.map(buildTeamHtml).filter(Boolean);
+    if (cards.length === 0) continue;
+    const label = g === 'FWC' ? 'Especiais (FWC)' : `Grupo ${g}`;
+    const stat = `${gOwned}/${gSlots}${gDups ? ` · +${gDups} repe` : ''}`;
+    html += `<div class="group"><h2 class="group-title">${label}<span class="group-stats">${stat}</span></h2><div class="group-grid">${cards.join('')}</div></div>`;
+  }
+  main.innerHTML = html;
   const pct = totSlots ? ((totOwned / totSlots) * 100) : 0;
   $('#total-progress').textContent =
     `${totOwned} / ${totSlots} (${pct.toFixed(1)}%) · ${totMiss} faltam · ${totDups} repetidas`;
@@ -745,7 +905,9 @@ $('#clear-all').addEventListener('click', async () => {
   if (!confirm('Marcar TODAS como faltantes? Apaga tudo o que você tem neste código.')) return;
   state = blankState();
   saveLocal(userCode, state);
-  if (isCloud) await pushAllToCloud(userCode, state);
+  if (isCloud) {
+    try { await clearCloud(userCode); } catch (e) { alert('Erro: ' + e.message); }
+  }
   render();
 });
 $('#user-code').addEventListener('change', async (e) => {
@@ -767,6 +929,44 @@ $('#copy-link').addEventListener('click', async () => {
 $('#show-help').addEventListener('click', (e) => {
   e.preventDefault();
   const h = $('#help'); h.style.display = h.style.display === 'none' ? 'block' : 'none';
+});
+
+$('#lock-btn').addEventListener('click', async () => {
+  if (!isCloud) {
+    alert('Bloqueio só funciona com a nuvem (Supabase) configurada.');
+    return;
+  }
+  if (!albumLocked) {
+    await promptSetPassword(userCode);
+    return;
+  }
+  if (!getPassword(userCode)) {
+    await promptUnlock(userCode);
+    return;
+  }
+  // Bloqueado e desbloqueado nesta sessão → menu
+  const choice = prompt(
+    `Álbum "${userCode}" está desbloqueado nesta sessão.\n\n` +
+    '1 = Trocar senha\n' +
+    '2 = Remover bloqueio\n' +
+    '3 = Travar agora (sair)',
+    '1'
+  );
+  if (choice === '1') {
+    await promptSetPassword(userCode);
+  } else if (choice === '2') {
+    const cur = getPassword(userCode);
+    const { error } = await supabase.rpc('set_album_password', {
+      p_code: userCode, p_new_password: '', p_current_password: cur,
+    });
+    if (error) { alert('Erro: ' + error.message); return; }
+    setPassword(userCode, null);
+    albumLocked = false;
+    updateLockUI();
+  } else if (choice === '3') {
+    setPassword(userCode, null);
+    updateLockUI();
+  }
 });
 
 // ========================== START ==========================
