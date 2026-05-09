@@ -970,7 +970,7 @@ function tileClass(c) {
 }
 function passesFilter(c) {
   if (filter === 'all') return true;
-  if (filter === 'owned') return c.owned && (c.dups || 0) === 0;
+  if (filter === 'owned') return !!c.owned;
   if (filter === 'missing') return !c.owned;
   if (filter === 'dups') return (c.dups || 0) > 0;
   return true;
