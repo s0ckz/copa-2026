@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<header class="topbar">
+<header class="topbar" id="topbar">
   <div class="title-row">
     <h1><span class="ball" aria-hidden="true"></span>Copa 2026</h1>
     <span class="user-pill" title="Seu código de álbum. Compartilhe a URL para acessar de outros aparelhos.">
@@ -18,33 +18,36 @@
       <button id="copy-link" title="Copiar link" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔗</button>
       <button id="lock-btn" title="Bloquear/desbloquear álbum" style="background:transparent;border:0;color:var(--accent);cursor:pointer;font-size:14px;padding:0 4px;">🔓</button>
     </span>
+    <button id="header-toggle" class="toggle-btn" aria-label="Mostrar filtros e ações" aria-expanded="false">▼</button>
     <div class="progress-wrap">
       <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
       <span id="total-progress" class="progress-text">0 / 0 (0%)</span>
     </div>
   </div>
-  <div class="controls">
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">Todas</button>
-      <button class="filter-btn" data-filter="owned">Tenho</button>
-      <button class="filter-btn" data-filter="missing">Faltam</button>
-      <button class="filter-btn" data-filter="dups">Repetidas</button>
+  <div class="header-drawer" id="header-drawer">
+    <div class="controls">
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">Todas</button>
+        <button class="filter-btn" data-filter="owned">Tenho</button>
+        <button class="filter-btn" data-filter="missing">Faltam</button>
+        <button class="filter-btn" data-filter="dups">Repetidas</button>
+      </div>
+      <input id="search" type="search" placeholder="Buscar seleção (ARG, brasil, ...)" />
+      <div class="actions">
+        <button id="export-json" title="Baixar JSON">⬇ JSON</button>
+        <button id="export-text" title="Lista no formato Figuritas">⬇ Lista</button>
+        <button id="import-btn" title="Importar JSON">⬆ Importar</button>
+        <input id="import-file" type="file" accept="application/json" hidden />
+        <button id="trade-btn" title="Calcular trocas a partir de uma lista colada">🤝 Trocas</button>
+        <button id="reset" class="warn" title="Carregar lista inicial (estado semente)">↺ Lista inicial</button>
+        <button id="clear-all" class="warn" title="Marcar todas como faltantes">✕ Esvaziar</button>
+      </div>
     </div>
-    <input id="search" type="search" placeholder="Buscar seleção (ARG, brasil, ...)" />
-    <div class="actions">
-      <button id="export-json" title="Baixar JSON">⬇ JSON</button>
-      <button id="export-text" title="Lista no formato Figuritas">⬇ Lista</button>
-      <button id="import-btn" title="Importar JSON">⬆ Importar</button>
-      <input id="import-file" type="file" accept="application/json" hidden />
-      <button id="trade-btn" title="Calcular trocas a partir de uma lista colada">🤝 Trocas</button>
-      <button id="reset" class="warn" title="Carregar lista inicial (estado semente)">↺ Lista inicial</button>
-      <button id="clear-all" class="warn" title="Marcar todas como faltantes">✕ Esvaziar</button>
-    </div>
+    <p class="legend">
+      Clique numa figurinha: alterna <b>tenho / falta</b>. <code>+</code> adiciona repetida, <code>−</code> remove.
+      Clique direito: adiciona repetida.
+    </p>
   </div>
-  <p class="legend">
-    Clique numa figurinha: alterna <b>tenho / falta</b>. <code>+</code> adiciona repetida, <code>−</code> remove.
-    Clique direito: adiciona repetida.
-  </p>
 </header>
 
 <main id="album"></main>
@@ -1106,6 +1109,27 @@ $('#lock-btn').addEventListener('click', async () => {
     render();
   }
 });
+
+// ========================== HEADER (mobile) ==========================
+(function setupMobileHeader() {
+  const topbar = document.getElementById('topbar');
+  const toggle = document.getElementById('header-toggle');
+  if (!topbar || !toggle) return;
+  toggle.addEventListener('click', () => {
+    const open = topbar.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? '▲' : '▼';
+  });
+  // Shrink topbar (hide progress text) when scrolled past a threshold.
+  let raf = null;
+  window.addEventListener('scroll', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      topbar.classList.toggle('scrolled', window.scrollY > 40);
+    });
+  }, { passive: true });
+})();
 
 // ========================== START ==========================
 (async function start() {

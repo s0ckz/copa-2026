@@ -438,12 +438,88 @@ main {
 }
 .theme-toggle:hover { background: rgba(247,201,72,.2); text-decoration: none; }
 
-@media (max-width: 480px) {
+/* Header drawer toggle button — only relevant on mobile */
+.toggle-btn {
+  display: none;
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(247,201,72,.4);
+  color: var(--gold);
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px; font-weight: 700;
+  align-items: center; justify-content: center;
+  transition: background .15s, transform .25s ease;
+  flex-shrink: 0;
+}
+.toggle-btn:hover { background: rgba(247,201,72,.18); }
+.topbar.open .toggle-btn { background: rgba(247,201,72,.22); border-color: var(--gold); }
+
+/* On desktop, the drawer is just a transparent wrapper — flow is normal. */
+.header-drawer { display: contents; }
+
+@media (max-width: 720px) {
+  /* Compact topbar */
+  .topbar { padding: 10px 12px 8px; }
+  .toggle-btn { display: inline-flex; }
+  .title-row { gap: 8px; margin-bottom: 6px; align-items: center; }
   .title-row h1 { font-size: 22px; letter-spacing: 2px; }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+  .title-row h1 .ball { width: 22px; height: 22px; }
+  .user-pill { padding: 4px 10px; font-size: 11px; }
+  .user-pill input { width: 110px; }
+
+  /* Progress: full-width second row */
+  .progress-wrap {
+    order: 99; flex-basis: 100%; min-width: 0;
+    margin-top: 4px;
+  }
+  .progress-track { height: 8px; }
+  .progress-text { font-size: 11px; }
+
+  /* Drawer: hidden by default, slides open on tap */
+  .header-drawer {
+    display: block;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height .3s ease, opacity .2s ease, margin-top .25s;
+  }
+  .topbar.open .header-drawer {
+    max-height: 600px;
+    opacity: 1;
+    margin-top: 8px;
+  }
+
+  .controls { gap: 6px; }
+  .filters { width: 100%; }
+  .filter-btn { flex: 1; padding: 8px 6px; font-size: 11px; letter-spacing: 0.6px; }
+  #search { width: 100%; min-width: 0; }
+  .actions { width: 100%; }
+  .actions button { flex: 1 1 calc(33% - 6px); padding: 8px 8px; font-size: 11px; }
+  .legend { font-size: 10px; line-height: 1.4; }
+
+  /* Shrink further when user has scrolled past the top */
+  .topbar.scrolled { padding: 6px 12px; }
+  .topbar.scrolled .title-row { margin-bottom: 0; }
+  .topbar.scrolled .title-row h1 { font-size: 18px; }
+  .topbar.scrolled .title-row h1 .ball { width: 18px; height: 18px; }
+  .topbar.scrolled .progress-text { display: none; }
+  .topbar.scrolled .progress-track { height: 5px; }
+  .topbar.scrolled .progress-wrap { margin-top: 2px; }
+
+  /* Tiles + group on small screens */
+  .grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 5px; }
   .tile { font-size: 18px; }
   .team-header .name { display: none; }
-  .group-title { font-size: 16px; padding: 4px 12px; }
+  .group { padding: 24px 10px 10px; }
+  .group-title { font-size: 16px; padding: 4px 12px; letter-spacing: 2px; }
+}
+
+@media (max-width: 480px) {
+  .title-row h1 { font-size: 20px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
+  .tile { font-size: 16px; }
+  .team-header .code { font-size: 12px; padding: 2px 6px; letter-spacing: 1px; }
 }
 
 /* ========== Modal (matches theme) ========== */
