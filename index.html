@@ -424,6 +424,7 @@ function showModal({ title, message, fields = [], actions, bodyHtml, scroll }) {
       inp.autocomplete = 'off';
       if (f.placeholder) inp.placeholder = f.placeholder;
       if (f.value != null) inp.value = f.value;
+      if (f.readonly) inp.readOnly = true;
       wrap.appendChild(span);
       wrap.appendChild(inp);
       fieldsEl.appendChild(wrap);
@@ -811,7 +812,7 @@ $('#export-json').addEventListener('click', () => {
      JSON.stringify({ user_code: userCode, state }, null, 2),
      'application/json');
 });
-$('#export-text').addEventListener('click', () => {
+function buildListText() {
   const lines = ['Figurinhas App - Lista', 'Eua Méx Can 26', '', 'Faltantes'];
   for (const sec of SECTIONS) {
     const start = sec.start ?? 1;
@@ -829,8 +830,35 @@ $('#export-text').addEventListener('click', () => {
     }
     if (dup.length) lines.push(`${sec.code} ${sec.flag}: ${dup.join(', ')}`);
   }
-  dl(`copa-2026-${userCode}-${new Date().toISOString().slice(0, 10)}.txt`,
-     lines.join('\n'), 'text/plain;charset=utf-8');
+  return lines.join('\n');
+}
+
+$('#export-text').addEventListener('click', async () => {
+  const text = buildListText();
+  const r = await showModal({
+    title: '⬇ Lista do álbum',
+    message: 'Mesmo formato aceito pelo botão Trocas. Copie pra mandar, ou baixe como .txt.',
+    fields: [{
+      name: 'list', label: 'Conteúdo', type: 'textarea',
+      value: text, readonly: true,
+    }],
+    actions: [
+      { label: 'Fechar', action: 'cancel' },
+      { label: 'Baixar .txt', action: 'download' },
+      { label: 'Copiar', action: 'copy', kind: 'primary' },
+    ],
+  });
+  if (r.action === 'copy') {
+    try {
+      await navigator.clipboard.writeText(text);
+      await infoDialog('Copiado', 'Lista copiada para a área de transferência.');
+    } catch (e) {
+      await infoDialog('Erro', 'Não foi possível copiar: ' + e.message);
+    }
+  } else if (r.action === 'download') {
+    dl(`copa-2026-${userCode}-${new Date().toISOString().slice(0, 10)}.txt`,
+       text, 'text/plain;charset=utf-8');
+  }
 });
 $('#import-btn').addEventListener('click', () => $('#import-file').click());
 $('#import-file').addEventListener('change', async (e) => {
