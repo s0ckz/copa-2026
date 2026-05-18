@@ -922,49 +922,101 @@ $('#show-help').addEventListener('click', (e) => {
 });
 
 // ========================== TROCAS ==========================
-// Suporta apenas o formato exportado pelo botão "⬇ Lista":
+// Suporta dois formatos de entrada (paste no botão "🤝 Trocas"):
+//
+// Formato A — "⬇ Lista" (este app / Figurinhas App):
 //   Figurinhas App - Lista
 //   Eua Méx Can 26
 //   Faltantes
 //   FWC 🏆: 00, 1, 2, 3, 4
-//   ...
+//   MEX 🇲🇽: 2, 6
 //   Repetidas
 //   ARG 🇦🇷: 1, 9
+//
+// Formato B — "Álbum de Figurinhas 2026" (sticker codes inline com contagem):
+//   📦 FIGURINHAS REPETIDAS (147)
+//   🇲🇽 MEX · pg. 8-9
+//   MEX7 (x1), MEX11 (x1)
+//   ...
+//   História da Copa · pg. 106-109
+//   FWC9 (x1), FWC11 (x1)
 function parseTradeList(text) {
   const result = { Faltantes: {}, Repetidas: {} };
   const validCodes = new Set(SECTIONS.map((s) => s.code));
+  const fwcByNum = (n) => {
+    if (n >= 0 && n <= 4)  return 'FWC-T';
+    if (n >= 5 && n <= 8)  return 'FWC-W';
+    if (n >= 9 && n <= 19) return 'FWC-L';
+    return null;
+  };
+  const upsert = (mode, code, n) => {
+    const arr = result[mode][code] = result[mode][code] || [];
+    if (!arr.includes(n)) arr.push(n);
+  };
+
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
-    if (/^figurinhas\b/i.test(line)) continue;
+    if (/^[─━—–\-=_*]+$/u.test(line)) continue;
+
+    // Skip greeting / branding noise
+    if (/^figurinhas\s+app\b/i.test(line)) continue;
     if (/^eua\b/i.test(line)) continue;
-    if (/^faltantes\b/i.test(line)) { mode = 'Faltantes'; continue; }
-    if (/^repetidas\b/i.test(line)) { mode = 'Repetidas'; continue; }
+    if (/^gerado\s+por\b/i.test(line)) continue;
+    if (/^▸\b/.test(line) || /^📲/.test(line) || /^💬/.test(line)) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+
+    // Mode detection (both formats)
+    const lower = line.toLowerCase();
+    if (/^faltantes\b/.test(lower) || /\bfigurinhas\s+faltantes\b/.test(lower)) {
+      mode = 'Faltantes'; continue;
+    }
+    if (/^repetidas\b/.test(lower) || /\bfigurinhas\s+repetidas\b/.test(lower)) {
+      mode = 'Repetidas'; continue;
+    }
     if (!mode) continue;
 
+    // Format A — "CODE [emoji]: n1, n2, ..."
     const colon = line.indexOf(':');
-    if (colon < 0) continue;
-    const head = line.slice(0, colon);
-    const tail = line.slice(colon + 1);
-
-    const m = head.match(/^([A-Z]{3,5}(?:-[A-Z])?)\b/);
-    if (!m) continue;
-    let code = m[1].toUpperCase();
-    if (code === 'FWC') {
-      if (/🏆/.test(line)) code = 'FWC-T';
-      else if (/🌎/.test(line)) code = 'FWC-W';
-      else if (/📜/.test(line)) code = 'FWC-L';
-      else continue;
+    if (colon >= 0) {
+      const head = line.slice(0, colon);
+      const m = head.match(/^([A-Z]{3,5}(?:-[A-Z])?)\b/);
+      if (m) {
+        let code = m[1].toUpperCase();
+        let useFormatA = true;
+        if (code === 'FWC') {
+          if (/🏆/.test(line)) code = 'FWC-T';
+          else if (/🌎/.test(line)) code = 'FWC-W';
+          else if (/📜/.test(line)) code = 'FWC-L';
+          else useFormatA = false; // fall through to entry scan
+        }
+        if (useFormatA && validCodes.has(code)) {
+          const nums = line.slice(colon + 1)
+            .split(/[\s,]+/).filter(Boolean)
+            .map((t) => parseInt(t, 10))
+            .filter((n) => !Number.isNaN(n));
+          for (const n of nums) upsert(mode, code, n);
+          continue;
+        }
+      }
     }
-    if (!validCodes.has(code)) continue;
 
-    const nums = tail.split(/[\s,]+/).filter(Boolean)
-      .map((t) => parseInt(t, 10))
-      .filter((n) => !Number.isNaN(n));
-    if (!nums.length) continue;
-
-    result[mode][code] = (result[mode][code] || []).concat(nums);
+    // Format B — scan for sticker entries like "MEX7 (x1)" or "FWC9 (x2)"
+    const entryRe = /\b([A-Z]{3})(\d{1,2})\b/g;
+    let em;
+    while ((em = entryRe.exec(line)) !== null) {
+      const codeRaw = em[1];
+      const n = parseInt(em[2], 10);
+      if (Number.isNaN(n)) continue;
+      let code = codeRaw;
+      if (code === 'FWC') {
+        code = fwcByNum(n);
+        if (!code) continue;
+      }
+      if (!validCodes.has(code)) continue;
+      upsert(mode, code, n);
+    }
   }
   return result;
 }
@@ -1057,7 +1109,7 @@ function tradeSummaryText(parsed) {
 async function openTradeDialog() {
   const r = await showModal({
     title: '🤝 Calcular trocas',
-    message: 'Cole uma lista no formato exportado pelo botão "⬇ Lista" (com cabeçalhos Faltantes / Repetidas). Eu cruzo com o seu álbum e mostro o que pegar e o que oferecer.',
+    message: 'Cole uma lista no formato do botão "⬇ Lista" (MEX 🇲🇽: 2, 6) ou do "Álbum de Figurinhas 2026" (MEX7 (x1), MEX11 (x1)). Eu cruzo com o seu álbum e mostro o que pegar e o que oferecer.',
     fields: [{
       name: 'list', label: 'Lista colada', type: 'textarea',
       placeholder: 'Figurinhas App - Lista\nEua Méx Can 26\nFaltantes\nMEX 🇲🇽: 2, 6, 16\nBRA 🇧🇷: 1, 13, 19\n\nRepetidas\nARG 🇦🇷: 1, 9',
