@@ -977,11 +977,11 @@ function parseTradeList(text) {
     }
     if (!mode) continue;
 
-    // Format A — "CODE [emoji]: n1, n2, ..."
+    // Format A — "CODE [emoji]: n1, n2, ..." or "[emoji] CODE: n1, ..."
     const colon = line.indexOf(':');
     if (colon >= 0) {
       const head = line.slice(0, colon);
-      const m = head.match(/^([A-Z]{3,5}(?:-[A-Z])?)\b/);
+      const m = head.match(/\b([A-Z]{3,5}(?:-[A-Z])?)\b/);
       if (m) {
         let code = m[1].toUpperCase();
         let useFormatA = true;
