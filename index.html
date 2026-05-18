@@ -969,7 +969,8 @@ function parseTradeList(text) {
 
     // Mode detection (both formats)
     const lower = line.toLowerCase();
-    if (/^faltantes\b/.test(lower) || /\bfigurinhas\s+faltantes\b/.test(lower)) {
+    if (/^faltantes\b/.test(lower) || /^faltando\b/.test(lower) ||
+        /\bfigurinhas\s+(faltantes|faltando)\b/.test(lower)) {
       mode = 'Faltantes'; continue;
     }
     if (/^repetidas\b/.test(lower) || /\bfigurinhas\s+repetidas\b/.test(lower)) {
